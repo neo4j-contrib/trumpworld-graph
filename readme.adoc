@@ -4,9 +4,9 @@ image::https://img.buzzfeed.com/buzzfeed-static/static/2017-01/13/13/asset/buzzf
 
 It all started with Jeremy Singer-Vine and his co-authors publishing a partial dataset of connections between organizations and people around Donald Trump.
 
-The data was made available as a public [Google Document], which we imported into Neo4j so that it became queryable and visualizable.
+The data was made available as a public Google Document, which we imported into Neo4j so that it became queryable and visualizable.
 
-You can access the TrumpWorld Graph live at http://bit.ly/trumpworld
+You can access the TrumpWorld Graph live at http://bit.ly/trumpworld (username/pwd - trumpworld/trumpworld)
 
 You can also run the TrumpWorld Guide in any Neo4j Browser by executing `:play http://guides.neo4j.com/trumpworld`
 
@@ -15,6 +15,12 @@ Which cover the import, queries and visualizations and the extension with the fe
 In this repository you can find the different resources and scripts for imports, querying and visualization.
 
 image::img/trumpworld-simple.jpg[width=400]
+
+== Current Work
+
+1. TrumpWorld Import & Queries link:01-trumpworld[]
+2. Adding US Government Contracting Data link:02-contracts[]
+3. Merging OpenCorporates Records link:03-opencorporates[]
 
 == Examples
 
@@ -42,7 +48,7 @@ image::img/donald-trump-cabinet-nominee-network-influencer-analysis.jpg[width=50
 * https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld?utm_term=.kd5QM0z1q#.ekLzoZ316[Buzzfeed article "Help us map TrumpWorld"]
 * https://neo4j.com/blog/buzzfeed-trumpworld-dataset-neo4j/[Trumpworld Graph in Neo4j] Blog Post by Michael Hunger
 * http://www.lyonwj.com/2017/01/30/trumpworld-us-contracting-data-neo4j/[Adding US Government Contracting Data - USASpending.gov] Blog Post by William Lyon
-* http://bit.ly/trumpworld[TrumpWorld Database Instance]
+* http://bit.ly/trumpworld[TrumpWorld Database Instance] (username/pwd - trumpworld/trumpworld)
 * http://trump.kimalbrecht.com[TrumpWorld Graph Visualization] by Kim Albrecht https://www.fastcodesign.com/3067700/infographic-of-the-day/holy-crap-this-map-of-trumps-business-network-is-terrifying[FastCo], https://www.wired.com/2017/01/kim-albrecht-trump-data-viz/[Wired]
 
 * http://portal.graphgist.org/graph_gists/3b255f1d-509a-4b1c-b8e5-1442efdd036d/[GraphGist TrumpWorld Simple]
@@ -60,11 +66,14 @@ Collaborate with Brown University, ProPublica, ICIJ, OCCRP, and others to enrich
 
 * http://CitizenAudit.org
 * http://www.fec.gov/finance/disclosure/ftpdet.shtml#a2015_2016
+* http://campaign-finance.org/
 * http://littlesis.org
 * https://opencorporates.com/corporate_groupings/Donald+Trump[http://OpenCorporates.com]
 * http://USASpending.gov
 * https://docs.google.com/spreadsheets/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/edit[BuzzFeed Google Doc]
 * http://fullcontact.com API
+* https://www.govtrack.us/
+* https://propublica.github.io/congress-api-docs/
 
 ////
 Betsy DeVos’s brother, Erik Prince, founded Blackwater, the mercenary outfit that, among other things, helped destabilize Iraq by firing into a crowd of civilians
