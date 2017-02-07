@@ -25,7 +25,7 @@ MATCH network = (:Person {name:"JARED KUSHNER"})-[*..2]-()
 RETURN network
 ----
 
-image::img/https://second-degree-kushner-network-trumpworld-data-analysis.png[width=400]
+image::img/second-degree-kushner-network-trumpworld-data-analysis.png[width=400]
 
 .Nominee Influence
 [source,cypher]
@@ -35,7 +35,7 @@ WHERE con.connection CONTAINS "Nominee"
 RETURN o,p
 ----
 
-image::img/donald-trump-cabinet-nominee-network-influencer-analysis-1024x989.jpg[width=500]
+image::img/donald-trump-cabinet-nominee-network-influencer-analysis.jpg[width=500]
 
 == Publications
 
@@ -43,17 +43,18 @@ image::img/donald-trump-cabinet-nominee-network-influencer-analysis-1024x989.jpg
 * https://neo4j.com/blog/buzzfeed-trumpworld-dataset-neo4j/[Trumpworld Graph in Neo4j] Blog Post by Michael Hunger
 * http://www.lyonwj.com/2017/01/30/trumpworld-us-contracting-data-neo4j/[Adding US Government Contracting Data - USASpending.gov] Blog Post by William Lyon
 * http://bit.ly/trumpworld[TrumpWorld Database Instance]
-* http://trump.kimalbrecht.com[TrumpWorld Graph Visualization] by Kim Albrecht https://www.fastcodesign.com/3067700/infographic-of-the-day/holy-crap-this-map-of-trumps-business-network-is-terrifying[FastCo], [Wired]
+* http://trump.kimalbrecht.com[TrumpWorld Graph Visualization] by Kim Albrecht https://www.fastcodesign.com/3067700/infographic-of-the-day/holy-crap-this-map-of-trumps-business-network-is-terrifying[FastCo], https://www.wired.com/2017/01/kim-albrecht-trump-data-viz/[Wired]
 
 * http://portal.graphgist.org/graph_gists/3b255f1d-509a-4b1c-b8e5-1442efdd036d/[GraphGist TrumpWorld Simple]
 * http://portal.graphgist.org/graph_gists/834c8437-f713-420d-8c0b-979a2d067485[GraphGist TrumpWorld Advanced] (needs APOC procedures installed)
 * Run GraphGists as browser guides: `:play http://portal.graphgist.org/graph_gists/trumpworld-graph/graph_guide`
 
 * http://www.slideshare.net/lyonwj/finding-insights-in-connected-data-using-graph-databases-in-journalism[NICAR Presentation: Finding Insights In Connected Data: Using Graph Databases In Journalism]
-* 
+
+
 == Next Steps
 
-Collaborate with Brown University, ProPublica, ICIJ, OCCRP, and more to enrich the dataset and find new insights.
+Collaborate with Brown University, ProPublica, ICIJ, OCCRP, and others to enrich the dataset and find new insights.
 
 == DataSources to Integrate
 
@@ -91,8 +92,33 @@ POTUS started a new company in Florida with Eric on 1/3/17
 
 == Visualizations
 
-image::img/donald-trumpworld-graph-data-model.jpg[width=400]
+image::img/trumpworld-graph-data-model.jpg[width=400]
 
 image::img/trumpworld.jpg[width=500]
 
 image::img/trumpworld-full-annotated.jpg[width=500]
+
+image::img/trump-banks.png[width=400]
+
+image::img/trump-putin.jpg[width=400]
+
+image::img/trump-virtual-map-properties.jpg[width=400]
+
+image::img/trumpworld-dataset-lev-leviev-roma-downey-shortest-path-1024x486.jpg[width=400]
+
+
+image::img/trump-fan-out-more.jpg[width=400]
+
+image::img/trump-org-fan-out.jpg[width=400]
+
+image::img/trump-organizations.jpg[width=400]
+
+image::img/trumpworld-simple-banks.jpg[width=400]
+
+image::img/trumpworld-simple-kushner.jpg[width=400]
+
+image::img/trumpworld-simple-no-trump.jpg[width=400]
+
+image::img/trumpworld-simple.jpg[width=400]
+
+image::img/trumpworld-without-trump.jpg[width=400]
