@@ -21,6 +21,7 @@ image::img/trumpworld-simple.jpg[width=400]
 1. TrumpWorld Import & Queries link:01-trumpworld[]
 2. Adding US Government Contracting Data link:02-contracts[]
 3. Merging OpenCorporates Records link:03-opencorporates[]
+4. https://github.com/johnymontana/neo4j-datasets/tree/master/trumpworld[Ongoing Work of William Lyon] neo4j-datasets littlesis / citizenaudit / guides
 
 == Examples
 
@@ -62,6 +63,7 @@ image::img/donald-trump-cabinet-nominee-network-influencer-analysis.jpg[width=50
 
 Collaborate with Brown University, ProPublica, ICIJ, OCCRP, and others to enrich the dataset and find new insights.
 
+
 == DataSources to Integrate
 
 * http://CitizenAudit.org
@@ -74,6 +76,7 @@ Collaborate with Brown University, ProPublica, ICIJ, OCCRP, and others to enrich
 * http://fullcontact.com API
 * https://www.govtrack.us/
 * https://propublica.github.io/congress-api-docs/
+
 
 ////
 Betsy DeVos’s brother, Erik Prince, founded Blackwater, the mercenary outfit that, among other things, helped destabilize Iraq by firing into a crowd of civilians
