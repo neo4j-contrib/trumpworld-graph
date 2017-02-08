@@ -21,7 +21,7 @@ image::img/trumpworld-simple.jpg[width=400]
 1. TrumpWorld Import & Queries link:01-trumpworld[]
 2. Adding US Government Contracting Data link:02-contracts[]
 3. Merging OpenCorporates Records link:03-opencorporates[]
-4. https://github.com/johnymontana/neo4j-datasets/tree/master/trumpworld[Ongoing Work of William Lyon] neo4j-datasets littlesis / citizenaudit / guides
+4. The Nonprofits of Trumpworld link:04-nonprofit[]
 
 == Examples
 
