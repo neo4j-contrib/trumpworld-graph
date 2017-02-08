@@ -22,6 +22,7 @@ image::img/trumpworld-simple.jpg[width=400]
 2. Adding US Government Contracting Data link:02-contracts[]
 3. Merging OpenCorporates Records link:03-opencorporates[]
 4. The Nonprofits of Trumpworld link:04-nonprofit[]
+5. Extending Trumpworld with LittleSis - the involuntary Facebook of the 1% link:05-littlesis[]
 
 == Examples
 
