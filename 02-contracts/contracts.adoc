@@ -1,0 +1,258 @@
+= Extending The Data - US Government Contracts
+
+== Extending The Network - US Government Contracts
+
+One of the benefits of the graph data model is the ability to combine datasets and query across them. Next we will look at how we can add data on recipients of US Government contracts.
+
+
+== USASpending.gov
+
+Data on recipients of federal government contracts are available online, at https://www.usaspending.gov/Pages/Default.aspx[USASpending.gov] 
+
+image:http://www.lyonwj.com/public/img/usaspending.png[]
+
+We may need to reference the https://www.usaspending.gov/DownloadCenter/Documents/USAspending.govDownloadsDataDictionary.pdf[data dictionary for USASpending.gov].
+
+
+== The Data
+
+Each row in the CSV file represents a contract that has been awarded to an organization, issued by a federal government agency (actually each row represents a *transaction*, and we could have multiple transactions per contract, but let's simplify our thinking and just think of each row as a contract).
+
+Looking at the data dictionary we can see that each row has *a lot* of fields (225 actually!), so there is a lot of information encoded in each row. We are mainly interested in:
+
+* What organization was awarded the contract?
+* What is the parent organization of the awardee (is it a subsidiary)?
+* The amount of the contract
+* The agency issuing the contract
+* The purpose of the contract
+
+We can use Cypher's `LOAD CSV` functionality to exaimine the first few rows of the CSV file and return specifically the columns we are interested in:
+
+[source,cypher,subs=attributes]
+----
+// Load the contractors CSV file and return the first 5 rows 
+// but only the columns we're interested in
+LOAD CSV WITH HEADERS 
+FROM "http://guides.neo4j.com/sandbox/trumpworld/data/contracts_2016.csv" AS row
+WITH row LIMIT 5
+RETURN row.piid AS piid, 
+       row.fiscal_year AS fiscal_year, 
+       row.vendorname AS vendor_name, 
+       row.mod_parent AS parent_org, 
+       row.dollarsobligated AS amount, 
+       row.contractingofficeagencyid AS agency, 
+       row.productorservicecode AS purpose
+----
+
+== MATCHing on organizations
+
+So here we can see some contracts that were issued by the Federal Prison System to various vendors. Now we could certainly import the entire dataset into Neo4j and run some interesting queries for analysis, but we're specifically interested in finding contracts that were awarded to vendors that appear in the Trumpworld dataset. Let's see if we can find any. To do this we need to `MATCH` on `Organization` nodes where the `name` property of the organization is equal to the `vendorname` column in the CSV file. We have to look through 5000 rows before we find a match: 
+
+[source,cypher,subs=attributes]
+----
+LOAD CSV WITH HEADERS FROM 
+"http://guides.neo4j.com/sandbox/trumpworld/data/contracts_2016.csv" AS row
+
+WITH row LIMIT 5000
+MATCH (o:Organization) WHERE o.name = row.vendorname
+RETURN row.piid AS piid, 
+       row.fiscal_year AS fiscal_year, 
+       row.vendorname AS vendor_name, 
+       row.mod_parent AS parent_org, 
+       row.dollarsobligated AS amount, 
+       row.contractingofficeagencyid AS agency, 
+       row.productorservicecode AS purpose
+----
+
+
+Here we see Duke University showing up as a vendor. This means that Duke University must be in the Trumpworld data.
+
+=== How is Duke University connected to Donald Trump?
+
+[source,cypher,subs=attributes]
+----
+MATCH p=(duke:Organization)-[*1..5]-(donald:Person)
+WHERE duke.name   = "DUKE UNIVERSITY" AND
+      donald.name = "DONALD J. TRUMP"
+RETURN p LIMIT 1
+----
+
+== Vendor Parent Organizations
+
+We can see that in this case the `vendor_name` and `parent_org` values are the same. This means that Duke University isn't part of larger organization. Parent company information is provided by Dun & Bradstreet. We are also interested in finding contracts that were awarded to subsidiaries of companies in Trumpworld, as this would also help us identify potential conflicts of interest. To find these contracts (one that was awarded to a vendor where the vendor is a subsidiary of a company that appears in Trumpworld) we'll need to match on `Organization` nodes where the `name` property is equal to the `parent_org` column and where the `vendor_name` is not equal to `parent_org`. To find examples of these we need to look through a few more rows - the first 50000 (but don't worry there are more than 4 million rows in this CSV file!):
+
+[source,cypher,subs=attributes]
+----
+LOAD CSV WITH HEADERS 
+FROM "http://guides.neo4j.com/sandbox/trumpworld/data/contracts_2016.csv" AS row
+WITH row LIMIT 50000
+MATCH (o:Organization) 
+WHERE o.name = row.mod_parent 
+    AND NOT row.mod_parent = row.vendorname
+RETURN row.piid AS piid, 
+       row.fiscal_year AS fiscal_year, 
+       row.vendorname AS vendor_name, 
+       row.mod_parent AS parent_org, 
+       row.dollarsobligated AS amount, 
+       row.contractingofficeagencyid AS agency, 
+       row.productorservicecode AS purpose
+----
+
+== The Labeled Property Graph Model
+
+How might we model this contract data as a graph? Let's examine the third contract in the table above:
+
+image:http://lyonwj.com/public/img/contract-data-model.png[]
+
+*How should we model government contracts in Neo4j?*
+
+The entities we want to model are `Organization`, `Contract`, and government `Agency`. 
+
+Note that we have an overlap on `Organization`, which allows us to combine these two datasets and query across them.
+
+== Loading The Data
+
+Now we're ready to import the data into the Trumpworld graph. We'll end running two import queries:
+
+**First, where the vendor of the contract appears as an organization in Trumpworld**
+
+[source,cypher,subs=attributes]
+----
+LOAD CSV WITH HEADERS 
+FROM "http://guides.neo4j.com/sandbox/trumpworld/data/contracts_2016.csv" AS row
+
+MATCH (o:Organization) WHERE o.name = row.vendorname
+
+WITH o,row.piid AS piid, 
+     row.fiscal_year AS fiscal_year, 
+     row.vendorname AS vendor_name, 
+     row.mod_parent AS parent_org, 
+     toFloat(row.dollarsobligated) AS amount, 
+     substring(row.contractingofficeagencyid, 6) AS agency, 
+     row.productorservicecode AS purpose
+
+MERGE (a:Agency {name: agency})
+MERGE (c:Contract {piid: piid})
+ON CREATE SET c.amount = amount,
+    c.purpose = purpose,
+    c.fiscal_year = fiscal_year
+// sum the transactions per contract
+ON MATCH SET c.amount = c.amount + amount
+MERGE (a)-[:ISSUED_CONTRACT]->(c)
+MERGE (c)<-[:AWARDED_CONTRACT]-(o)
+----
+
+**Then, a second query for loading contracts where the vendor's *parent company* appears as an organization in Trumpworld**
+
+[source,cypher,subs=attributes]
+----
+LOAD CSV WITH HEADERS 
+FROM "http://guides.neo4j.com/sandbox/trumpworld/data/contracts_2016.csv" AS row
+
+MATCH (parent:Organization) 
+WHERE parent.name = row.mod_parent 
+    AND NOT row.mod_parent = row.vendorname
+WITH parent, row.piid AS piid, row.fiscal_year AS fiscal_year, 
+    row.vendorname AS vendor_name, row.mod_parent AS parent_org, 
+    toFloat(row.dollarsobligated) AS amount, 
+    substring(row.contractingofficeagencyid, 6) AS agency, 
+    row.productorservicecode AS purpose
+MERGE (vo:Organization {name: vendor_name})
+MERGE (a:Agency {name: agency})
+MERGE (c:Contract {piid: piid})
+ON CREATE SET c.amount = amount,
+    c.purpose = purpose,
+    c.fiscal_year = fiscal_year
+// sum the transactions per contract
+ON MATCH SET c.amount = c.amount + amount
+MERGE (a)-[:ISSUED_CONTRACT]->(c)
+MERGE (c)<-[:AWARDED_CONTRACT]-(vo)
+MERGE (parent)<-[:PARENT_ORG]-(vo)
+----
+
+
+== Analyzing Trumpworld + USASpending
+
+Now that we've imported the USASpending data, let's take a look at the Merchandise Mart Properties, Inc contract. Since this is the Trumpworld graph, a logical question we might ask is "What is the connection from this contract to Donald Trump?". We can do this using the `shortestPath` function in Cypher:
+
+.The shortest path from a specific contract to Donald Trump.
+[source,cypher,subs=attributes]
+----
+MATCH (c:Contract {piid: "DJU4500517056"})
+MATCH (c)<-[:ISSUED_CONTRACT]-(a:Agency)
+MATCH (donald:Person {name: "DONALD J. TRUMP"})
+MATCH p=shortestPath( (donald)-[*]-(c) )
+RETURN *
+----
+
+Let's digest the result of this query. This graph visualization is showing us a contract awarded by the Federal Prison System for the lease of facilities that was awarded to a real estate company whose parent company is an investor in a company whose CEO is the son-in-law (and close advisor) of Donald Trump.
+
+Of course, this is just one shortest path, there may be others. Let's find *all* shortest paths connecting this contract to Donald Trump:
+
+.All shortest paths from a specific contract to Donald Trump.
+[source,cypher,subs=attributes]
+----
+MATCH (c:Contract {piid: "DJU4500517056"})
+MATCH (c)<-[:ISSUED_CONTRACT]-(a:Agency)
+MATCH (donald:Person {name: "DONALD J. TRUMP"})
+MATCH p=allShortestPaths( (donald)-[*]-(c) )
+RETURN *
+----
+
+
+== Cabinet Nominees
+
+What connections do Trump's cabinet nominees have to contract vendors and parent companies of contract vendors?
+
+[source,cypher,subs=attributes]
+----
+MATCH (donald:Person {name: "DONALD J. TRUMP"})<-[r:NOMINEE]-(cabinet:Person)
+MATCH p=(cabinet)--(o:Organization)-[*1..2]-(c:Contract)--(a:Agency)
+RETURN *
+----
+
+*Connections from Trump's cabinet nominees to government contracts.*
+
+Let's take a closer look at the connection between some specific cabinet nominees to government contracts.
+
+== Rex Tillerson
+
+Rex Tillerson is Trump's nominee for Secretary of State. He is also the former CEO and chairman of Exxon Mobil. Let's explore his connections in Trumpworld.
+
+
+[source,cypher,subs=attributes]
+----
+MATCH (p:Person {name:"REX TILLERSON"})--(o:Organization {name: "EXXON MOBIL CORPORATION"}),
+ path=(o)-[*1..2]-(c:Contract)--(a:Agency)
+RETURN *
+----
+
+*Connections from Rex Tillerson to government contracts, through Exxon Mobil.*
+
+We can see that Exxon Mobil itself was only awarded two contracts, one from the Department of the Army and another from the Department of the Navy. However, because we are modeling parent companies as well we can see that a subsidiary of Exxon Mobil (Mobil Oil Guam Inc) has been awarded significant contracts from the Department of the Navy and the Defense Logistics Agency.
+
+
+== James Mattis
+
+James Mattis is Trump's nominee for Secretary of Defense. 
+
+[source,cypher,subs=attributes]
+----
+MATCH (p:Person {name:"JAMES MATTIS"})--(o:Organization),
+ path=(o)-[*1..2]-(c:Contract)--(a:Agency)
+RETURN *
+----
+
+== Connections to Trump
+
+Are there any direct connections from Trump to Organizations receiving government contracts?
+
+[source,cypher,subs=attributes]
+----
+MATCH (p:Person) WHERE p.name CONTAINS "DONALD J. TRUMP"
+MATCH (p)-[]-(o:Organization)-[:AWARDED_CONTRACT]->(c:Contract),
+      (c)<-[:ISSUED_CONTRACT]-(a:Agency)
+RETURN *
+----
+
+This is of course the contract that [allows the Secret Service to rent space in Trump Tower](http://www.politico.com/story/2016/12/secret-service-faces-massive-bill-for-protecting-trump-232153) for protecting Trump and his associates.
