@@ -11,9 +11,12 @@ Failed to invoke procedure `apoc.refactor.mergeNodes`: Caused by: org.neo4j.grap
 
 
 match (o:Organization)
-SET o.cleaned=apoc.text.regreplace(apoc.text.regreplace(toUpper(o.name),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","");
+SET o.cleaned=apoc.text.regreplace(apoc.text.regreplace(toUpper(o.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","")
 
-Added 154 labels, created 154 nodes, set 2717 properties, statement completed in 3428 ms.
+match (o:Organization)
+with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
+where c > 1
+return *
 
 
 match (o:Organization)
