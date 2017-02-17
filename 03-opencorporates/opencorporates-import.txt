@@ -19,6 +19,8 @@ where c > 1
 return *
 
 
+
+
 match (o:Organization)
 with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
 where c > 1
@@ -100,8 +102,8 @@ RETURN count(*);
 LOAD CSV WITH HEADERS FROM 
 "file:///2017_All_Contracts_Full_20170115.csv" AS row
 MATCH (o:Organization) WHERE o.cleaned IN [
-	apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$",""),
-	apoc.text.regreplace(apoc.text.regreplace(toUpper(row.mod_parent),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","")
+	apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$",""),
+	apoc.text.regreplace(apoc.text.regreplace(toUpper(row.mod_parent),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","")
 ]
 RETURN count(*);
 
@@ -110,8 +112,8 @@ LOAD CSV WITH HEADERS FROM
 "file:///2017_All_Contracts_Full_20170115.csv" AS row
 WITH row, case row.mod_parent when "" then null when row.vendorname then null else row.mod_parent end as parent
 WITH row, parent, 
-     apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname,
-     apoc.text.regreplace(apoc.text.regreplace(toUpper(parent),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cparent
+     apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname,
+     apoc.text.regreplace(apoc.text.regreplace(toUpper(parent),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cparent
 MATCH (o:Organization) WHERE o.cleaned IN [ cname, cparent]
 WITH o, cname, parent, cparent, row.piid AS piid, row.fiscal_year AS fiscal_year, 
     row.vendorname AS vendor_name, row.mod_parent AS parent_org, 
@@ -147,7 +149,7 @@ call apoc.load.json("file:///Users/mh/Dropbox/Public/DonaldTrump.json") yield va
 UNWIND value.results.corporate_grouping.memberships as entry
 WITH entry.membership.company as company
 
-WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
+WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
 
 MERGE (o:Organization {cleaned:cname})
 ON CREATE SET o.name=company.name
@@ -166,7 +168,7 @@ call apoc.load.json("file:///Users/mh/Dropbox/Public/DonaldTrump.json") yield va
 UNWIND value.results.corporate_grouping.memberships as entry
 WITH entry.membership.company as company
 
-WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+)","")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
+WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
 
 MERGE (o:Organization {cleaned:cname})
 ON CREATE SET o.name=company.name

@@ -194,12 +194,12 @@ We want to map those relationship types to fewer, more distinct ones.
 ----
 WITH 
 {org_org_url} AS url, 
-['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER'] AS terms
+['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER','BOUGHT','DEVELOPER','RUSSIAN','TIE','AGREEMENT','MARKETING','SERVICES','DEVELOPER','RECEIVED','MERGER','WORKED_TOGETHER','BACKER','QUESTION','LEASE','BID'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
-ORDER BY count(*) DESC
+RETURN coalesce(found,type) AS type, count(*) 
+ORDER BY count(*) DESC;
 ----
 
 //table
@@ -262,7 +262,7 @@ Most of the work here is clearing up the relationship-type:
 ----
 WITH
 {org_org_url} AS url, 
-['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER'] AS terms
+['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER','BOUGHT','DEVELOPER','RUSSIAN','TIE','AGREEMENT','MARKETING','SERVICES','DEVELOPER','RECEIVED','MERGER','WORKED_TOGETHER','BACKER','QUESTION','LEASE','BID'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
@@ -361,15 +361,40 @@ ORDER BY count(*) DESC LIMIT 5
 
 Here we have 212 different relationship-types.
 
+We can even try to compute our terms from the data
+
+
+[source,cypher,subs=attributes]
+----
+WITH 
+{person_org_url} AS url
+LOAD CSV WITH HEADERS FROM url AS row
+UNWIND split(apoc.text.regreplace(toUpper(row.Connection),'\\W+','_'),"_") AS part
+return part, count(*) 
+ORDER BY count(*) DESC LIMIT 30
+----
+
+.Bi-grams
+[source,cypher,subs=attributes]
+----
+WITH 
+{person_org_url} AS url
+LOAD CSV WITH HEADERS FROM url AS row
+WITH split(apoc.text.regreplace(toUpper(row.Connection),'\\W+','_'),"_") as parts
+UNWIND [idx in range(0,length(parts)-2) | parts[idx..idx+2]] AS part
+return part, count(*) 
+ORDER BY count(*) DESC LIMIT 30
+----
+
 [source,cypher,subs=attributes]
 ----
 WITH 
 {person_org_url} AS url,
-['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER'] AS terms
+['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER','SERVICES','CONSULTANT','SECRETARY','CO_RUN','DEGREE','EDITOR','ANALYST','DEAL','LIASON','OFFICER','MARKETING','DONOR','LEGAL','MEMBER','WORKED_FOR','DELEGATE','BACKER','DONATE','COMMANDER','STUDENT','BOUGHT','LED'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
+RETURN coalesce(found,type) AS type, count(*)
 ORDER BY count(*) DESC
 ----
 
