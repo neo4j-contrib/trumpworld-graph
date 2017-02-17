@@ -1,0 +1,113 @@
+= Donald Trump Tweets
+
+Buzzfeed published an article that examined media consumption of Donald Trump.
+
+https://www.buzzfeed.com/charliewarzel/trumps-information-universe
+
+____
+BuzzFeed News reviewed 26,234 of Trump’s 34,062 tweets, which we received through the Twitter API and developer https://www.washingtonpost.com/news/the-intersect/wp/2016/09/22/a-look-at-the-170-times-donald-trump-has-tweeted-about-the-losers/[Brendan Brown], who has http://www.trumptwitterarchive.com/[archived Trump’s tweets] beyond what is accessible via the API (a stream of data that includes information like tweet text, time, and date). We filtered that data down to the 2,687 hyperlinks tweeted by Trump’s personal Twitter account since he announced his candidacy in June 2015. By programmatically expanding the shortened links in his tweets we were able to group and count them to generate a rudimentary portrait of the news and opinion he publicizes and, presumably, consumes.
+____
+
+You’ll find a downloadable spreadsheet of Trump’s tweets from June 16, 2015, to Nov. 17, 2016, http://data.buzzfeed.com/projects/2016-11-trump-tweets/tweets_realdonaldtrump.csv[here].
+
+In link:trumptweets.cypher[our Cypher script] we do the following:
+
+== load trump tweets from buzzfeed article
+
+* creates a twitter graph with mentions and hashtags
+* also marks assumed retweets
+
+[source,cypher]
+----
+include::trumptweets.cypher[tags=tweetgraph]
+----
+
+== reports frequently used hashtags and mentions
+
+[source,cypher]
+----
+include::trumptweets.cypher[tags=tweetreport]
+----
+
+== Hour of Tweets
+
+[source,cypher]
+----
+include::trumptweets.cypher[tags=tweethour]
+----
+
+----
+╒══════╤═══╕
+│"hour"│"c"│
+╞══════╪═══╡
+│"16"  │353│
+├──────┼───┤
+│"15"  │330│
+├──────┼───┤
+│"11"  │317│
+├──────┼───┤
+│"14"  │315│
+├──────┼───┤
+│"09"  │314│
+└──────┴───┘
+----
+
+== creates a time tree
+
+[source,cypher]
+----
+include::trumptweets.cypher[tags=timetree]
+----
+
+== report top words (1-gram, 2-grams, 3-grams) from tweet texts
+
+[source,cypher]
+----
+include::trumptweets.cypher[tags=trigram]
+----
+
+----
+╒══════════════════════════════════════╤═══╕
+│"trigram"                             │"c"│
+╞══════════════════════════════════════╪═══╡
+│["america","great","again"]           │205│
+├──────────────────────────────────────┼───┤
+│["make","america","great"]            │205│
+├──────────────────────────────────────┼───┤
+│["crooked","hillary","clinton"]       │77 │
+├──────────────────────────────────────┼───┤
+│["will","make","america"]             │56 │
+├──────────────────────────────────────┼───┤
+│["make","america","safe"]             │32 │
+├──────────────────────────────────────┼───┤
+│["thank","your","support"]            │30 │
+├──────────────────────────────────────┼───┤
+│["goofy","elizabeth","warren"]        │22 │
+├──────────────────────────────────────┼───┤
+│["america","safe","great"]            │21 │
+├──────────────────────────────────────┼───┤
+│["will","back","soon"]                │20 │
+├──────────────────────────────────────┼───┤
+│["safe","great","again"]              │19 │
+├──────────────────────────────────────┼───┤
+│["that","crooked","hillary"]          │17 │
+├──────────────────────────────────────┼───┤
+│["hard","never","down"]               │16 │
+├──────────────────────────────────────┼───┤
+│["will","work","hard"]                │16 │
+├──────────────────────────────────────┼───┤
+│["weak","illegal","immigration"]      │16 │
+├──────────────────────────────────────┼───┤
+│["work","hard","never"]               │16 │
+├──────────────────────────────────────┼───┤
+│["just","announced","that"]           │16 │
+├──────────────────────────────────────┼───┤
+│["together","will","make"]            │16 │
+├──────────────────────────────────────┼───┤
+│["never","down","make"]               │15 │
+├──────────────────────────────────────┼───┤
+│["self","funding","campaign"]         │15 │
+├──────────────────────────────────────┼───┤
+│["will","interviewed","foxandfriends"]│15 │
+└──────────────────────────────────────┴───┘
+----
