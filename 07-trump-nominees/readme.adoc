@@ -30,6 +30,9 @@ We can save the text into a CSV to create our graph from.
 
 == CSV Listing
 
+.Confirmation Process by the Washington Post
+image::https://www.washingtonpost.com/graphics/politics/how-confirmations-work/img/cabinet-process-flowchart-big-1000.jpg?c=479[]
+
 Then we can list the postions:
 
 [source,cypher]

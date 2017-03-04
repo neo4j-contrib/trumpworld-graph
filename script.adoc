@@ -1,0 +1,117 @@
+:play http://guides.neo4j.com/trumpworld
+
+import
+
+queries
+
+- prisons
+- russia
+- kushner
+- peter thiel
+
+cleanup
+
+
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2017.csv" AS row
+WITH row LIMIT 5
+RETURN row.piid AS piid, 
+       row.fiscal_year AS fiscal_year, 
+       row.vendorname AS vendor_name, 
+       row.mod_parent AS parent_org, 
+       row.dollarsobligated AS amount, 
+       row.contractingofficeagencyid AS agency, 
+       row.productorservicecode AS purpose;
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2017.csv" AS row
+WITH row, apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cleaned
+MATCH (o:Organization) WHERE o.cleaned = cleaned
+RETURN o, row.piid AS piid, 
+       row.fiscal_year AS fiscal_year, 
+       row.vendorname AS vendor_name, 
+       row.mod_parent AS parent_org, 
+       row.dollarsobligated AS amount, 
+       row.contractingofficeagencyid AS agency, 
+       row.productorservicecode AS purpose
+LIMIT 5;
+
+bug in file one field ends with \"
+
+sed -i '' '13304 d' contracts_2017.csv
+
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2017.csv" AS row
+WITH row, apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cleaned
+MATCH (o:Organization) WHERE o.cleaned = cleaned
+RETURN count(*);
+
+// 81 matches in 2017
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2016.csv" AS row
+WITH row, apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cleaned
+MATCH (o:Organization) WHERE o.cleaned = cleaned
+RETURN count(*);
+
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2017.csv" AS row
+WITH row, apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as  cleaned
+
+MATCH (o:Organization) WHERE o.cleaned = cleaned
+
+WITH o,row.piid AS piid, 
+     row.fiscal_year AS fiscal_year, 
+     row.vendorname AS vendor_name, 
+     row.mod_parent AS parent_org, 
+     toFloat(row.dollarsobligated) AS amount, 
+     substring(row.contractingofficeagencyid, 6) AS agency, 
+     row.productorservicecode AS purpose
+
+MERGE (a:Agency {name: agency})
+MERGE (c:Contract {piid: piid})
+ON CREATE SET c.amount = amount,
+    c.purpose = purpose,
+    c.fiscal_year = fiscal_year
+// sum the transactions per contract
+ON MATCH SET c.amount = c.amount + amount
+MERGE (a)-[:ISSUED_CONTRACT]->(c)
+MERGE (c)<-[:AWARDED_CONTRACT]-(o)
+
+
+LOAD CSV WITH HEADERS 
+FROM "file:///contracts_2017.csv" AS row
+WITH row, 
+ apoc.text.regreplace(apoc.text.regreplace(toUpper(row.mod_parent),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as  cleaned,
+ apoc.text.regreplace(apoc.text.regreplace(toUpper(row.vendorname),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as  vcleaned
+
+MATCH (parent:Organization) 
+WHERE parent.cleaned = cleaned
+    AND NOT row.mod_parent = row.vendorname
+WITH parent, row.piid AS piid, row.fiscal_year AS fiscal_year, 
+    row.vendorname AS vendor_name, vcleaned, row.mod_parent AS parent_org, 
+    toFloat(row.dollarsobligated) AS amount, 
+    substring(row.contractingofficeagencyid, 6) AS agency, 
+    row.productorservicecode AS purpose
+MERGE (vo:Organization {cleaned : vcleaned}) 
+  ON CREATE SET vo.name = vendor_name
+MERGE (a:Agency {name: agency})
+MERGE (c:Contract {piid: piid})
+ON CREATE SET c.amount = amount,
+    c.purpose = purpose,
+    c.fiscal_year = fiscal_year
+// sum the transactions per contract
+ON MATCH SET c.amount = c.amount + amount
+MERGE (a)-[:ISSUED_CONTRACT]->(c)
+MERGE (c)<-[:AWARDED_CONTRACT]-(vo)
+MERGE (parent)<-[:PARENT_ORG]-(vo);
+
+
+
+MATCH (c)<-[:ISSUED_CONTRACT]-(a:Agency) WHERE a.name CONTAINS "PRISON"
+MATCH (donald:Person {name: "DONALD J. TRUMP"})
+MATCH p=shortestPath( (donald)-[*]-(c) )
+RETURN *

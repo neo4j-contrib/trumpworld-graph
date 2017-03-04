@@ -1,8 +1,23 @@
 # todo apoc proc rename property, rename label, rename reltype
 
 
+cleanup
+
+call apoc.load.json("file:///Users/mh/Dropbox/Public/DonaldTrump.json") yield value
+UNWIND value.results.corporate_grouping.memberships as entry
+WITH entry.membership.company as company
+
+WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
+
+MERGE (o:Organization {cleaned:cname})
+ON CREATE SET o.name=company.name
+SET o.jurisdiction = company.jurisdiction_code, o.oc_number = company.company_number,
+o.inactive = case when company.inactive = true then true else null end;
+
+
 match (o:Organization)
 with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
+where c > 1
 call apoc.refactor.mergeNodes(orgs) yield node
 return *
 
@@ -145,11 +160,14 @@ return r.connection, o.name, sum(c.amount), collect(distinct c.purpose),collect(
 
 
 TODO connect agencies to departments to nominees
-call apoc.load.json("file:///Users/mh/Dropbox/Public/DonaldTrump.json") yield value
+
+CALL apoc.load.json("file:///Users/mh/Dropbox/Public/DonaldTrump.json") YIELD value
 UNWIND value.results.corporate_grouping.memberships as entry
 WITH entry.membership.company as company
 
-WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
+WITH company, 
+    apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," "),
+    " (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
 
 MERGE (o:Organization {cleaned:cname})
 ON CREATE SET o.name=company.name
@@ -173,7 +191,7 @@ WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"(
 MERGE (o:Organization {cleaned:cname})
 ON CREATE SET o.name=company.name
 SET o.jurisdiction = company.jurisdiction_code, o.oc_number = company.company_number,
-o.inactive = case when company.inactive = true then true else null end
+o.inactive = case when company.inactive = true then true else null end;
 
 Added 154 labels, created 154 nodes, set 2717 properties, statement completed in 3428 ms.
 // todo fetch role of trump from OC
@@ -193,10 +211,97 @@ return o.name, cleaned;
 
 
 match (o:Organization) WHERE not exists(o.oc_number)
-call apoc.load.json("https://api.opencorporates.com/v0.4/companies/search?q="+o.name) yield value
-with o, value.results
+WITH o LIMIT 100
+call apoc.load.json("https://api.opencorporates.com/v0.4/companies/search?q="+apoc.text.urlencode(o.name)) yield value
+with o, value.results as results
 where size(results.companies) = 1
-SET o.
+WITH results.companies[0].company as c,o
+SET o.oc_number = c.company_number, o.company_type = c.company_type,
+o.current_status = c.current_status, o.inactive = c.inactive,
+o.incorporation_date = c.incorporation_date, o.dissolution_date = c.dissolution_date,
+o.created_at = c.created_at,  o.updated_at = c.updated_at, o.retrieved_at = c.retrieved_at,
+o.address = c.registered_address_in_full, o.source = c.source.publisher,
+o.previous_names = [n IN c.previous_names | n.company_name];
+
+
+# neo4j to shell via cypher
+
+match (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+return "curl -o oc_"+o.oc_number+".json -L https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number limit 10
+
+# then export csv in browser :)
+
+
+match (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+WITH o LIMIT 100
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/search?q="+apoc.text.urlencode(o.name)) YIELD value
+WITH o, value.results as results
+WHERE size(results.companies) = 1
+WITH results.companies[0].company as c,o
+SET o.oc_number = c.company_number, o.type = c.company_type,
+o.status = c.current_status, o.inactive = c.inactive,
+o.incorporation_date = c.incorporation_date, o.dissolution_date = c.dissolution_date,
+o.created_at = c.created_at,  o.updated_at = c.updated_at, o.retrieved_at = c.retrieved_at,
+o.address = c.registered_address_in_full, o.source = c.source.publisher,
+o.jurisdiction = c.jurisdiction_code,
+o.previous_names = [n IN c.previous_names | n.company_name];
+
+MATCH (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+WITH o LIMIT 100
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number) yield value
+WITH o, value.results as results
+WITH results.companies[0].company as c,o
+SET o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name],
+WITH o, c, apoc.map.groupByMulti([d IN c.data.most_recent WHERE d.datum.description IS NOT null | {key:datum.data_type,value:datum.description}],"key") as agg
+WITH o, c, apoc.map.fromPairs([k in keys(agg) | [k,[v IN agg[k] | v.value]]]) as values
+SET o += values
+
+UNWIND c.officers as officer
+MERGE (p:Person {name:toUpper(officer.name)})
+WITH * WHERE not exists (p)-->(o)
+CALL apoc.create.relationship(p,toUpper(officer.position),{oc_number:officer.id, start:officer.start_date,end:officer.end_date, source:officer.opencorporates_url},o) yield rel
+RETURN count(*);
+
+CALL apoc.load.json("file:///Users/mh/Dropbox/Public/oc_00102498.json") yield value
+WITH value.results.company as c
+WITH [g IN c.corporate_groupings | g.corporate_grouping.name] as groupings, c
+WITH groupings, c, [d IN c.data.most_recent WHERE d.datum.description IS NOT null  | {key:d.datum.data_type,value:d.datum.description}] as agg0
+WITH c,groupings,apoc.map.groupByMulti(agg0,"key") as agg
+WITH *, apoc.map.fromPairs([k in keys(agg) | [k,apoc.coll.toSet([v IN agg[k] | v.value])]]) as values
+UNWIND c.officers as po
+RETURN groupings,values, {name:po.officer.name,position:toUpper(po.officer.position),oc_number:po.officer.id, start:po.officer.start_date,end:po.officer.end_date, source:po.officer.opencorporates_url} as person;
+
+
+MATCH (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction) AND NOT exists(o.loaded)
+WITH o LIMIT 100
+CALL apoc.util.sleep(1000)
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number) yield value
+WITH o, value.results.company as c
+SET o.loaded = true
+SET o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name]
+WITH o, c
+WITH *, [d IN coalesce(c.data.most_recent,[]) WHERE d.datum.description IS NOT null  | {key:d.datum.data_type,value:d.datum.description}] as agg0
+WITH *, apoc.map.groupByMulti(agg0,"key") as agg
+WITH *, apoc.map.fromPairs([k in keys(agg) | [k,apoc.coll.toSet([v IN agg[k] | v.value])]]) as values
+SET o += values
+WITH *
+UNWIND c.officers as po
+WITH *, toUpper(lpo.officer.name) =~ ".*(CORP|AGENT|INC|LLC|LLP|SYSTEM|LTD|LIMITED|ORGA).*" as isOrg,toUpper(po.officer.name) as name,
+     replace(toUpper(po.officer.position)," ","_") as position
+FOREACH (_ IN case when isOrg then [true] else [] end | MERGE (:Organization {name:name}))
+FOREACH (_ IN case when isOrg then [] else [true] end | MERGE (:Person {name:name}))
+WITH *
+MATCH (p {name:name})
+SET p:Officer
+WITH * WHERE NOT position IS NULL AND not exists ((p)-->(o))
+CALL apoc.create.relationship(p,position,{oc_number:po.officer.id},o) yield rel
+SET rel.start=po.officer.start_date, rel.end=po.officer.end_date
+RETURN labels(p),type(rel),po.officer,values,o.name;
+
+
+
+
+
 
 
             {
@@ -299,6 +404,13 @@ todo should we prefix properties with oc_ ?
                         "uid": null
                     }
                 },
+
+
+
+// todo turn values into list
+WITH apoc.map.groupByMulti([d IN c.data.most_recent WHERE d.datum.description IS NOT null | {key:datum.data_type,value:datum.description}],"key") as agg
+WITH apoc.map.fromPairs([k in keys(agg) | [k,[v IN agg[k] | v.value]]]) as values
+o += values
 
 
 "results": {
@@ -463,6 +575,11 @@ todo should we prefix properties with oc_ ?
             },
             "updated_at": "2014-02-16T10:07:06+00:00"
         }
+
+o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name],
+UNWIND c.officers as officer
+MERGE (p:Person {name:toUpper(officer.name)})
+CALL apoc.create.relationship(p,toUpper(officer.position),{oc_number:officer.id, start:officer.start_date,end:officer.end_date, source:officer.opencorporates_url},o) yield rel
 
 
 

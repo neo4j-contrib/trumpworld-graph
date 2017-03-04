@@ -51,6 +51,7 @@ image::img/donald-trump-cabinet-nominee-network-influencer-analysis.jpg[width=50
 * https://neo4j.com/blog/buzzfeed-trumpworld-dataset-neo4j/[Trumpworld Graph in Neo4j] Blog Post by Michael Hunger
 * http://www.lyonwj.com/2017/01/30/trumpworld-us-contracting-data-neo4j/[Adding US Government Contracting Data - USASpending.gov] Blog Post by William Lyon
 * http://bit.ly/trumpworld[TrumpWorld Database Instance] (username/pwd - trumpworld/trumpworld)
+* https://drive.google.com/open?id=0Bxha9_Bo1y5VTmQ0SlRsbWNka28[Presentation Trumpworld]
 * http://trump.kimalbrecht.com[TrumpWorld Graph Visualization] by Kim Albrecht https://www.fastcodesign.com/3067700/infographic-of-the-day/holy-crap-this-map-of-trumps-business-network-is-terrifying[FastCo], https://www.wired.com/2017/01/kim-albrecht-trump-data-viz/[Wired]
 
 * http://portal.graphgist.org/graph_gists/3b255f1d-509a-4b1c-b8e5-1442efdd036d/[GraphGist TrumpWorld Simple]
@@ -58,6 +59,7 @@ image::img/donald-trump-cabinet-nominee-network-influencer-analysis.jpg[width=50
 * Run GraphGists as browser guides: `:play http://portal.graphgist.org/graph_gists/trumpworld-graph/graph_guide`
 
 * http://www.slideshare.net/lyonwj/finding-insights-in-connected-data-using-graph-databases-in-journalism[NICAR Presentation: Finding Insights In Connected Data: Using Graph Databases In Journalism]
+* https://github.com/bkeepers/stop-trump[Stop Trump Repository]
 
 
 == Next Steps
@@ -139,10 +141,9 @@ image::img/trump-virtual-map-properties.jpg[width=400]
 
 image::img/trumpworld-dataset-lev-leviev-roma-downey-shortest-path-1024x486.jpg[width=400]
 
+image::img/trump-org-fan-out.jpg[width=400]
 
 image::img/trump-fan-out-more.jpg[width=400]
-
-image::img/trump-org-fan-out.jpg[width=400]
 
 image::img/trump-organizations.jpg[width=400]
 
@@ -155,3 +156,11 @@ image::img/trumpworld-simple-no-trump.jpg[width=400]
 image::img/trumpworld-simple.jpg[width=400]
 
 image::img/trumpworld-without-trump.jpg[width=400]
+
+image::img/trumpworld-russia-2.jpg[width=400]
+
+image::img/trumpworld-russia.jpg[width=400]
+
+image::img/trump-highly-connected.jpg[width=400]
+
+image::img/trump-virtual-map-properties.jpg[width=400]

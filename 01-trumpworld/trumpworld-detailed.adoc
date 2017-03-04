@@ -266,7 +266,7 @@ WITH
 LOAD CSV WITH HEADERS FROM url AS row
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), type) AS type, row
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'CONNECTED_TO' end) AS type, row
 
 MERGE (o1:Organization {name:row.`Organization A`})
 MERGE (o2:Organization {name:row.`Organization B`})
@@ -451,7 +451,7 @@ WITH
 LOAD CSV WITH HEADERS FROM url AS row
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), 'INVOLVED_WITH') AS type, row
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'INVOLVED_WITH' end) AS type, row
 
 MERGE (o:Organization {name:row.Organization})
 MERGE (p:Person {name:row.Person})
@@ -535,7 +535,7 @@ WITH
 LOAD CSV WITH HEADERS FROM url AS row
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), type) AS type, row
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'RELATED_TO' end) AS type, row
 
 MERGE (p1:Person {name:row.`Person A`})
 MERGE (p2:Person {name:row.`Person B`})

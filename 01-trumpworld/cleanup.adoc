@@ -1,0 +1,32 @@
+== Cleanup
+
+To connect data from our dataset with other datasets we need to have better matching names.
+
+That's why we remove all non-letter, non-numeric characters from the names of organizations and persons and store them in a "cleaned" property.
+
+[source,cypher]
+----
+match (o:Organization)
+SET o.cleaned=apoc.text.regreplace(apoc.text.regreplace(toUpper(o.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","")
+----
+
+[source,cypher]
+----
+create index on :Organization(cleaned);
+----
+
+[source,cypher]
+----
+MATCH (p:Person)
+SET p.cleaned=apoc.text.regreplace(toUpper(p.name),"([^A-Z0-9 ]+) ?"," ")
+----
+
+[source,cypher]
+----
+create index on :Person(cleaned);
+----
+
+We tried a more aggressive cleaning with removing vowels and projecting similarconsonants to a single phonetic equivalent but that was too aggressive and lead to too many false negatives.
+
+We apply the same operation to names we get from secondary sources to improve matching.
+
