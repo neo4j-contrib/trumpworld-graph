@@ -16,7 +16,7 @@ WITH p,value.itemListElement[0] AS list WHERE list.result.detailedDescription IS
 
 WITH p,list.resultScore AS score, list.result.description AS description, list.result.name AS name, list.result.url AS url, list.result.detailedDescription.articleBody AS detailedDescription
 
-SET p.detailedDescrption = detailedDescription, p.score = score, p.description = description, p.normalizedName = name, p.url = url
+SET p.detailedDescription = detailedDescription, p.score = score, p.description = description, p.normalizedName = name, p.url = url
 ~~~
 
 ![](img/person.png)
@@ -36,4 +36,4 @@ WITH p,list.resultScore AS score, list.result.description AS description, list.r
 SET p.detailedDescription = detailedDescription, p.score = score, p.description = description, p.normalizedName = name, p.url = url
 ~~~
 
-![](img/organization/png)
+![](img/organization.png)
