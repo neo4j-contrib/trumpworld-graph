@@ -22,7 +22,9 @@ image::img/trumpworld-simple.jpg[width=400]
 2. Adding US Government Contracting Data link:02-contracts[]
 3. Merging OpenCorporates Records link:03-opencorporates[]
 4. The Nonprofits of Trumpworld link:04-nonprofit[]
-5. Extending Trumpworld with LittleSis - the involuntary Facebook of the 1% link:05-littlesis[]
+5. Extending Trumpworld with LittleSis - the involuntary Facebook of the 1% (also contains a lot of FEC data) link:05-littlesis[]
+6. Trump Tweet Graph since June 2015 based on buzzfeeds Trump Media article link:06-trumptweets[]
+7. Nominees for the different governmental departments and embassies link:07-trump-nominees[]
 
 == Examples
 

@@ -1,0 +1,504 @@
+= OpenCorporates Import
+
+From the buzzfeed data, we now have a lot of companies in our dataset, we would like to know more about these companies than just their name.
+
+So we look at OpenCorporates.com which is an online registry (with an API) of over 126 million corporations world-wide with detailed information like addresses, filings, officers etc.
+
+== Cleanup
+
+Our first attempts at matching were not so successful because of spelling differences, there is a lot more that you can do, for now we only remove all punctuation, and remove any "CORP|CO|CORPORATION|INCORPORATION|COMPANY" suffixes.
+
+For the queries please have a look at link:../01-trumpworld/cleanup.adoc[]
+
+////
+We do that both for Organizations and Persons and store it in a `cleaned` property which we are going to use to match our data from OpenCorporates.
+
+[source,cypher]
+----
+MATCH (o:Organization)
+SET o.cleaned = apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","");
+----
+
+[source,cypher]
+----
+MATCH (p:Person)
+SET p.cleaned = apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ");
+----
+
+We should also have an index on the cleaned property for faster matching.
+////
+
+== Groupings
+
+A new beta feature of OpenCorporates is "Grouping", which creates lists of companies that belong together under some topic, or conglomerate.
+
+https://opencorporates.com/users/23275[Ben Parker] thankfully collected many companies (1056) which belong to https://opencorporates.com/corporate_groupings/Donald+trump[Donald Trump's various businesses] (and other members of his cabinet and family).
+
+We can download https://opencorporates.com/corporate_groupings/Donald%20Trump/companies[that grouping] also via https://api.opencorporates.com/v0.4/corporate_groupings/Donald+Trump[the OpenCorporates API].
+
+The JSON looks like this (we're only interested in the `results.corporate_groupings.memberships.membership.company` information)
+
+----
+{
+"api_version": "0.4",
+"results": {
+  "corporate_grouping": {
+    "name": "Donald Trump",
+    "wikipedia_id": "Donald_Trump",
+    "companies_count": 1052,
+    "created_at": "2016-05-04T19:59:57+00:00",
+    "updated_at": "2017-03-04T14:43:48+00:00",
+    "curators": [],
+    "memberships": [{
+       "membership": {
+       "source": {
+          "publisher": "Ben Parker",
+          "retrieved_at": "2016-05-04T20:00:00+00:00",
+          "url": "https://opencorporates.com/users/23275",
+          "source_type": "user"
+        },
+        "company": {
+          "name": "TRUMP SALES & LEASING CHICAGO MEMBER CORP",
+          "jurisdiction_code": "us_de",
+          "company_number": "4744125",
+          "opencorporates_url": "https://opencorporates.com/companies/us_de/4744125",
+          "inactive": null
+        }}}, ...]
+----
+
+So for the names coming back in that JSON file we do the same cleanup, then try to merge them on the "cleaned" attribute with our organizations and set a few attributes, most importantly the jurisdiction and the opencorporates number which we need later.
+
+
+[source,cypher]
+----
+call apoc.load.json("https://api.opencorporates.com/v0.4/corporate_groupings/Donald+Trump") yield value
+UNWIND value.results.corporate_grouping.memberships as entry
+WITH entry.membership.company as company
+
+WITH company, apoc.text.regreplace(apoc.text.regreplace(toUpper(company.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","") as cname
+
+MERGE (o:Organization {cleaned:cname})
+ON CREATE SET o.name=company.name
+SET o.jurisdiction = company.jurisdiction_code, o.oc_number = company.company_number,
+o.inactive = company.inactive = true;
+----
+
+Added 154 labels, created 154 nodes, set 2717 properties, statement completed in 3428 ms.
+
+== Add Missing Organizations
+
+[source,cypher]
+----
+match (o:Organization) WHERE not exists(o.oc_number)
+WITH o LIMIT 100
+call apoc.load.json("https://api.opencorporates.com/v0.4/companies/search?q="+apoc.text.urlencode(o.name)) yield value
+with o, value.results as results
+where size(results.companies) = 1
+WITH results.companies[0].company as c,o
+SET o.oc_number = c.company_number, o.company_type = c.company_type,
+o.current_status = c.current_status, o.inactive = c.inactive,
+o.incorporation_date = c.incorporation_date, o.dissolution_date = c.dissolution_date,
+o.created_at = c.created_at,  o.updated_at = c.updated_at, o.retrieved_at = c.retrieved_at,
+o.address = c.registered_address_in_full, o.source = c.source.publisher,
+o.previous_names = [n IN c.previous_names | n.company_name];
+----
+
+
+
+.neo4j to shell via cypher, then use export csv in browser :)
+[source,cypher]
+----
+match (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+return "curl -o oc_"+o.oc_number+".json -L https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number limit 10
+----
+
+=== Load by OpenCorporates number and jurisdiction
+
+[source,cypher]
+----
+MATCH (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+WITH o LIMIT 100
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number) yield value
+WITH o, value.results as results
+WITH results.companies[0].company as c,o
+SET o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name],
+WITH o, c, apoc.map.groupByMulti([d IN c.data.most_recent WHERE d.datum.description IS NOT null | {key:datum.data_type,value:datum.description}],"key") as agg
+WITH o, c, apoc.map.fromPairs([k in keys(agg) | [k,[v IN agg[k] | v.value]]]) as values
+SET o += values
+
+UNWIND c.officers as officer
+MERGE (p:Person {name:toUpper(officer.name)})
+WITH * WHERE not exists (p)-->(o)
+CALL apoc.create.relationship(p,toUpper(officer.position),{oc_number:officer.id, start:officer.start_date,end:officer.end_date, source:officer.opencorporates_url},o) yield rel
+RETURN count(*);
+----
+
+
+=== Load single test file
+
+[source,cypher]
+----
+CALL apoc.load.json("file:///Users/mh/Dropbox/Public/oc_00102498.json") yield value
+WITH value.results.company as c
+WITH [g IN c.corporate_groupings | g.corporate_grouping.name] as groupings, c
+WITH groupings, c, [d IN c.data.most_recent WHERE d.datum.description IS NOT null  | {key:d.datum.data_type,value:d.datum.description}] as agg0
+WITH c,groupings,apoc.map.groupByMulti(agg0,"key") as agg
+WITH *, apoc.map.fromPairs([k in keys(agg) | [k,apoc.coll.toSet([v IN agg[k] | v.value])]]) as values
+UNWIND c.officers as po
+RETURN groupings,values, {name:po.officer.name,position:toUpper(po.officer.position),oc_number:po.officer.id, start:po.officer.start_date,end:po.officer.end_date, source:po.officer.opencorporates_url} as person;
+----
+
+=== Load Organization in Batches
+
+////
+- if you don't have an API key, you can load about 100 organizations worth of data
+- then you have to switch IPs
+////
+
+[source,cypher]
+----
+MATCH (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction) AND NOT exists(o.loaded)
+WITH o LIMIT 100
+CALL apoc.util.sleep(1000)
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number) yield value
+WITH o, value.results.company as c
+SET o.loaded = true
+SET o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name]
+WITH o, c
+WITH *, [d IN coalesce(c.data.most_recent,[]) WHERE d.datum.description IS NOT null  | {key:d.datum.data_type,value:d.datum.description}] as agg0
+WITH *, apoc.map.groupByMulti(agg0,"key") as agg
+WITH *, apoc.map.fromPairs([k in keys(agg) | [k,apoc.coll.toSet([v IN agg[k] | v.value])]]) as values
+SET o += values
+WITH *
+UNWIND c.officers as po
+WITH *, toUpper(lpo.officer.name) =~ ".*(CORP|AGENT|INC|LLC|LLP|SYSTEM|LTD|LIMITED|ORGA).*" as isOrg,toUpper(po.officer.name) as name,
+     replace(toUpper(po.officer.position)," ","_") as position
+FOREACH (_ IN case when isOrg then [true] else [] end | MERGE (:Organization {name:name}))
+FOREACH (_ IN case when isOrg then [] else [true] end | MERGE (:Person {name:name}))
+WITH *
+MATCH (p {name:name})
+SET p:Officer
+WITH * WHERE NOT position IS NULL AND not exists ((p)-->(o))
+CALL apoc.create.relationship(p,position,{oc_number:po.officer.id},o) yield rel
+SET rel.start=po.officer.start_date, rel.end=po.officer.end_date
+RETURN labels(p),type(rel),po.officer,values,o.name;
+----
+
+
+=== WIP / Scratch Below
+
+
+[source,json]
+----
+{
+    "company": {
+        "branch_status": "branch of an out-of-jurisdiction company",
+        "company_number": "344214",
+        "company_type": "Alien Corporations (RICO) - Foreign",
+        "created_at": "2011-09-30T12:52:25+01:00",
+        "current_status": "Active/Compliance",
+        "dissolution_date": null,
+        "inactive": false,
+        "incorporation_date": "2005-03-28",
+        "jurisdiction_code": "us_ga",
+        "name": "BANK OF SCOTLAND",
+        "opencorporates_url": "https://opencorporates.com/companies/us_ga/344214",
+        "previous_names": [],
+        "registry_url": "http://corp.sos.state.ga.us/corp/soskb/Corp.asp?344214",
+        "retrieved_at": "2011-10-04T15:15:15+01:00",
+        "source": {
+            "publisher": "Georgia Secretary of State",
+            "retrieved_at": "2011-10-04T15:15:15+01:00",
+            "url": "http://corp.sos.state.ga.us/corp/soskb/Corp.asp?344214"
+        },
+        "updated_at": "2014-02-16T16:18:16+00:00",
+        "registered_address_in_full": "THE MOUND,EDINBURGH,EHI 1YZ, SCOTLAND ZF"
+    }
+----
+
+// todo multiple results
+
+=== Fields to extract
+
+
+* jurisdiction_code
+* name
+
+* branch_status
+* company_number
+* company_type
+* current_status
+* inactive
+
+* incorporation_date
+* dissolution_date
+* created_at
+* updated_at
+* previous_names: [.company_name]
+* registered_address_in_full
+* source source.publisher
+* retrieved_at
+* industry_codes [industry_code.description]
+* corporate_groupings: [corporate_grouping.name]
+
+////
+-[
+end_date": null,
+position": "secretary", -> rel-type
+start_date": "2003-07-24",
+uid": null
+]-> (:Officer {
+
+id": 32609673,
+name": "DAVID JOHN JACKSON",
+}
+
+only for officers,
+
+update existing relationships with the OC information
+todo should we prefix properties with oc_ ?
+
+////
+
+
+[source,javascript]
+----
+"inactive": false,
+"incorporation_date": "1909-04-14",
+"industry_codes": [
+    {
+        "industry_code": {
+            "code": "70100",
+            "description": "Activities of head offices",
+            "code_scheme_id": "uk_sic_2007",
+            "code_scheme_name": "UK SIC Classification 2007"
+        }
+    }
+],
+"jurisdiction_code": "gb",
+"name": "BP P.L.C.",
+"officers": [
+    {
+        "officer": {
+            "end_date": null,
+            "id": 32609673,
+            "name": "DAVID JOHN JACKSON",
+            "opencorporates_url": "https://opencorporates.com/officers/32609673",
+            "position": "secretary",
+            "start_date": "2003-07-24",
+            "uid": null
+        }
+    },
+----
+
+----
+// todo turn values into list
+WITH apoc.map.groupByMulti([d IN c.data.most_recent WHERE d.datum.description IS NOT null | {key:datum.data_type,value:datum.description}],"key") as agg
+WITH apoc.map.fromPairs([k in keys(agg) | [k,[v IN agg[k] | v.value]]]) as values
+o += values
+----
+
+.Response from search API
+[source,javascript]
+----
+"results": {
+  "company": {
+      "branch_status": null,
+      "company_number": "00102498",
+      "company_type": "Public Limited Company",
+      "corporate_groupings": [
+          {
+              "corporate_grouping": {
+                  "name": "bp",
+                  "opencorporates_url": "https://opencorporates.com/corporate_groupings/bp",
+                  "updated_at": "2014-02-16T11:22:24+00:00",
+                  "wikipedia_id": "BP"
+              }
+          }
+      ],
+      "created_at": "2010-10-21T18:20:50+01:00",
+      "current_status": "Active",
+      "data": {
+          "most_recent": [
+              {
+                  "datum": {
+                      "data_type": "WipoTrademark",
+                      "description": null,
+                      "id": 9790033,
+                      "opencorporates_url": "https://opencorporates.com/data/9790033",
+                      "title": "International Trademark Registration"
+                  }
+              },
+             {
+                  "datum": {
+                      "data_type": "CompanyAddress",
+                      "description": "1 St James's Square, London SW1Y 4PD, GB",
+                      "id": 9788778,
+                      "opencorporates_url": "https://opencorporates.com/data/9788778",
+                      "title": "Company Address"
+                  }
+              },
+              {
+                  "datum": {
+                      "data_type": "Website",
+                      "description": "http://www.bp.com/sectiongenericarticle.do?categoryId=9021231&contentId=7039279",
+                      "id": 8474113,
+                      "opencorporates_url": "https://opencorporates.com/data/8474113",
+                      "title": "Website"
+                  }
+              },
+              {
+                  "datum": {
+                      "data_type": "OfficialRegisterEntry",
+                      "description": "register id: 313807",
+                      "id": 2452824,
+                      "opencorporates_url": "https://opencorporates.com/data/2452824",
+                      "title": "SEC Edgar entry"
+                  }
+              }
+          ],
+          "total_count": 125,
+          "url": "https://opencorporates.com/companies/gb/00102498/data"
+      },
+      "dissolution_date": null,
+      "filings": [
+          {
+              "filing": {
+                  "date": "2014-02-13",
+                  "id": 199825350,
+                  "opencorporates_url": "https://opencorporates.com/filings/199825350",
+                  "title": "Return of purchase of own shares",
+                  "uid": "284acfeJxjZRd2YnXi4ohPyU9OSS1OBnHYQJzMFCdxfgMDA0djQy9/Cw8TUxMzAycuzvi0/KLcksqCVCdxlmAPA2MnLtb4lOTEEidxRguYMYklQFkOIwNDEwMjQ+MmNef83ILEvMzUYo/80uJUK6sIXx/3cCsrz9zE9FQo5Z1aSaQybgYGBkYgZgJiZiBmAWJWIGYDYnYg5gBiTiDmAmJuANC4NJA="
+              }
+          },
+          {
+              "filing": {
+                  "date": "2014-02-13",
+                  "id": 199825349,
+                  "opencorporates_url": "https://opencorporates.com/filings/199825349",
+                  "title": "Notice of cancellation of shares",
+                  "uid": "771a5aeJxjZRd2YnXi4ohPyU9OSS1OBnHYQJzMFCdxfgMDA0djQy9/iwBXUxMzAycuzvi0/KLcksqCVCdxlmAPAzMnLtb4lOTEEidxRkuYMYklQFkOIwNDEwMjQ+MmNef83ILEvMzUYo/80uJUK6sIXx/3cCsrz9zE9FQo5Z1aSaQybgYGBkYgZgJiZiBmAWJWIGYDYnYg5gBiTiDmAmJuAOT2NK0="
+              }
+          }
+      ],
+      "inactive": false,
+      "incorporation_date": "1909-04-14",
+      "industry_codes": [
+          {
+              "industry_code": {
+                  "code": "70100",
+                  "description": "Activities of head offices",
+                  "code_scheme_id": "uk_sic_2007",
+                  "code_scheme_name": "UK SIC Classification 2007"
+              }
+          }
+      ],
+      "jurisdiction_code": "gb",
+      "name": "BP P.L.C.",
+      "officers": [
+          {
+              "officer": {
+                  "end_date": null,
+                  "id": 32609673,
+                  "name": "DAVID JOHN JACKSON",
+                  "opencorporates_url": "https://opencorporates.com/officers/32609673",
+                  "position": "secretary",
+                  "start_date": "2003-07-24",
+                  "uid": null
+              }
+          },
+          {
+              "officer": {
+                  "end_date": "2012-03-30",
+                  "id": 32609674,
+                  "name": "DAVID JOHN PEARL",
+                  "opencorporates_url": "https://opencorporates.com/officers/32609674",
+                  "position": "secretary",
+                  "start_date": "2001-11-01",
+                  "uid": null
+              }
+          },
+          {
+              "officer": {
+                  "end_date": null,
+                  "id": 32609675,
+                  "name": "PAUL MILTON ANDERSON",
+                  "opencorporates_url": "https://opencorporates.com/officers/32609675",
+                  "position": "director",
+                  "start_date": "2010-02-01",
+                  "uid": null
+              }
+          },
+          {
+              "officer": {
+                  "end_date": null,
+                  "id": 32609676,
+                  "name": "FRANK BOWMAN",
+                  "opencorporates_url": "https://opencorporates.com/officers/32609676",
+                  "position": "director",
+                  "start_date": "2010-11-08",
+                  "uid": null
+              }
+          }
+      ],
+      "opencorporates_url": "https://opencorporates.com/companies/gb/00102498",
+      "previous_names": [
+          {
+              "company_name": "BP AMOCO P.L.C.",
+              "con_date": "2001-05-01"
+          },
+          {
+              "company_name": "THE BRITISH PETROLEUM COMPANY P.L.C.",
+              "con_date": "1998-12-31"
+          }
+      ],
+      "registered_address_in_full": "1 ST JAMES'S SQUARE, LONDON, SW1Y 4PD",
+      "registry_url": "http://data.companieshouse.gov.uk/doc/company/00102498",
+      "retrieved_at": "2014-02-16T10:06:59+00:00",
+      "source": {
+          "publisher": "UK Companies House",
+          "retrieved_at": "2014-02-16T10:06:59+00:00",
+          "terms": "UK Crown Copyright",
+          "url": "http://xmlgw.companieshouse.gov.uk/"
+      },
+      "updated_at": "2014-02-16T10:07:06+00:00"
+  }
+----
+
+[source,cypher]
+----
+o.groupings = [g IN c.corporate_groupings | g.corporate_grouping.name],
+UNWIND c.officers as officer
+MERGE (p:Person {name:toUpper(officer.name)})
+CALL apoc.create.relationship(p,toUpper(officer.position),{oc_number:officer.id, start:officer.start_date,end:officer.end_date, source:officer.opencorporates_url},o) yield rel
+----
+
+////
+
+duplicates after cleanup
+
+match (o:Organization)
+with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
+where c > 1
+call apoc.refactor.mergeNodes(orgs) yield node
+return *
+
+match (o:Organization)
+SET o.cleaned=apoc.text.regreplace(apoc.text.regreplace(toUpper(o.name),"([^A-Z0-9 ]+) ?"," ")," (CORP|CO|CORPORATION|INCORPORATION|COMPANY)$","")
+
+match (o:Organization)
+with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
+where c > 1
+return *
+
+match (o:Organization)
+with o.cleaned as cleaned, count(*) as c, collect(o.name) as names, collect(o) as orgs
+where c > 1
+return *
+╒═══╤═════════════╤════════════════════════════════╤══════════════════════════════════════════════════════════════════════════════════════════════════╕
+│"c"│"cleaned"    │"names"                         │"orgs"                                                                                            │
+╞═══╪═════════════╪════════════════════════════════╪══════════════════════════════════════════════════════════════════════════════════════════════════╡
+│2  │"INVESCO LTD"│["INVESCO LTD.","INVESCO, LTD."]│[{"name":"INVESCO LTD.","cleaned":"INVESCO LTD"},{"name":"INVESCO, LTD.","cleaned":"INVESCO LTD"}]│
+└───┴─────────────┴────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+////

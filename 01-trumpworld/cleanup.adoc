@@ -30,3 +30,76 @@ We tried a more aggressive cleaning with removing vowels and projecting similarc
 
 We apply the same operation to names we get from secondary sources to improve matching.
 
+////
+
+with [["\\W+"," "],["[^A-Z ]+",""],[" (CORP|CO|CORPORATION|INCORPORATION)$"],["[AEIOUYJH]",""],["[CGQ]","K"],["B","P"],["(SCH|SH|Z|X)","S"],["D","T"],["[VW]","F"]] as replacements
+match (o:Organization) 
+WITH o,replacements limit 10
+return o.name, reduce(a=toUpper(o.name), pair IN replacements | apoc.text.regreplace(a,pair[0],pair[1])) as cleaned;
+
+
+with [["[^A-Z ]+",""],[" (CORP|CO|CORPORATION|INCORPORATION)$",""],["[CGQ]","K"],["P","B"],["(SCH|SH|Z|X)","S"],["D","T"],["[VW]","F"],["(\\w)[AEIOUYJH]+","$1"],["(\\w)\\1+","$1"]] as replacements
+match (o:Organization) WITH o,replacements
+with o, reduce(a=toUpper(o.name), pair IN replacements | apoc.text.regreplace(a,pair[0],pair[1])) as cleaned
+SET o.cleaned = cleaned
+return o.name, cleaned;
+
+
+LOAD CSV WITH HEADERS FROM 
+"file:///2017_All_Contracts_Full_20170115.csv" AS row
+unwind [split(row.vendorname," ")[-1],split(row.mod_parent," ")[-1]] as title
+
+with title, count(*) as c order by c desc limit 20
+call apoc.text.phonetic(title) yield value
+return value, collect(title), sum(c) as c
+order by c desc
+
+
+with [["[^A-Z ]+",""],[" (CORP|CO|CORPORATION|INCORPORATION)$",""],["[CGQ]","K"],["P","B"],["(SCH|SH|Z|X)","S"],["D","T"],["[VW]","F"],["(\\w)[AEIOUYJH]+","$1"],["(\\w)\\1+","$1"]] as replacements
+LOAD CSV WITH HEADERS FROM 
+"file:///2017_All_Contracts_Full_20170115.csv" AS row
+unwind [split(row.vendorname," ")[-1],split(row.mod_parent," ")[-1]] as title
+
+with replacements, title, count(*) as c order by c desc limit 20
+with title, c, reduce(a=toUpper(title), pair IN replacements | apoc.text.regreplace(a,pair[0],pair[1])) as value
+
+return value, collect(title), sum(c) as c
+order by c desc
+
+╒══════════╤═════════════════╤══════╕
+│"value"   │"collect(title)" │"c"   │
+╞══════════╪═════════════════╪══════╡
+│"INK"     │["INC.","INC"]   │268461│
+├──────────┼─────────────────┼──────┤
+│"LK"      │["LLC","L.L.C."] │92656 │
+├──────────┼─────────────────┼──────┤
+│"KRBRTN"  │["CORPORATION"]  │74631 │
+├──────────┼─────────────────┼──────┤
+│""        │[""]             │17194 │
+├──────────┼─────────────────┼──────┤
+│"INKRBRT" │["INCORPORATED"] │16170 │
+├──────────┼─────────────────┼──────┤
+│"AFRTS"   │["AWARDEES"]     │15579 │
+├──────────┼─────────────────┼──────┤
+│"KMBN"    │["COMPANY"]      │13788 │
+├──────────┼─────────────────┼──────┤
+│"KRB"     │["CORP.","CORP"] │10945 │
+├──────────┼─────────────────┼──────┤
+│"T"       │["THE"]          │9465  │
+├──────────┼─────────────────┼──────┤
+│"LT"      │["LTD.","LTD"]   │5189  │
+├──────────┼─────────────────┼──────┤
+│"K"       │["CO."]          │5101  │
+├──────────┼─────────────────┼──────┤
+│"OF"      │["OF"]           │3349  │
+├──────────┼─────────────────┼──────┤
+│"UNTSKLST"│["(UNDISCLOSED)"]│3342  │
+├──────────┼─────────────────┼──────┤
+│"BLK"     │["PLC"]          │2588  │
+├──────────┼─────────────────┼──────┤
+│"LB"      │["LLP"]          │2058  │
+├──────────┼─────────────────┼──────┤
+│"ATRT"    │["AUTHORITY"]    │1827  │
+└──────────┴─────────────────┴──────┘
+
+////
