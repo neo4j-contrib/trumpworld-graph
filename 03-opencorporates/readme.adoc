@@ -134,26 +134,37 @@ RETURN count(*);
 ----
 
 
-=== Load single test file
+=== Load single Organization
+
+- Doesn't work well for officers yet b/c they are not all people
+- we extract groupings, most-recent data into array properties, keyed by data-type
 
 [source,cypher]
 ----
-CALL apoc.load.json("file:///Users/mh/Dropbox/Public/oc_00102498.json") yield value
+MATCH (o:Organization) WHERE exists(o.oc_number) and exists(o.jurisdiction)
+WITH o LIMIT 1
+CALL apoc.load.json("https://api.opencorporates.com/v0.4/companies/"+o.jurisdiction+"/"+o.oc_number) yield value
 WITH value.results.company as c
 WITH [g IN c.corporate_groupings | g.corporate_grouping.name] as groupings, c
 WITH groupings, c, [d IN c.data.most_recent WHERE d.datum.description IS NOT null  | {key:d.datum.data_type,value:d.datum.description}] as agg0
 WITH c,groupings,apoc.map.groupByMulti(agg0,"key") as agg
 WITH *, apoc.map.fromPairs([k in keys(agg) | [k,apoc.coll.toSet([v IN agg[k] | v.value])]]) as values
 UNWIND c.officers as po
-RETURN groupings,values, {name:po.officer.name,position:toUpper(po.officer.position),oc_number:po.officer.id, start:po.officer.start_date,end:po.officer.end_date, source:po.officer.opencorporates_url} as person;
+RETURN groupings,values, 
+      {name:po.officer.name,position:toUpper(po.officer.position),
+       oc_number:po.officer.id, start:po.officer.start_date,end:po.officer.end_date, 
+       source:po.officer.opencorporates_url} as person;
 ----
 
 === Load Organization in Batches
 
-////
+- we extract groupings, most-recent data into array properties, keyed by data-type
 - if you don't have an API key, you can load about 100 organizations worth of data
-- then you have to switch IPs
-////
+- OpenCorporates doesn't denote if an officer is a person or an organization, so we figure it out by checking the name for common organization keywords "(CORP|AGENT|INC|LLC|LLP|SYSTEM|LTD|LIMITED|ORGA)"
+- could work by looking at id-pattern/space
+
+
+// - then you have to switch IPs
 
 [source,cypher]
 ----
