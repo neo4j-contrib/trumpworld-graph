@@ -6,7 +6,7 @@ It all started with Jeremy Singer-Vine and his co-authors publishing a partial d
 
 The data was made available as a public Google Document, which we imported into Neo4j so that it became queryable and visualizable.
 
-You can access the TrumpWorld Graph live at http://bit.ly/trumpworld (username/pwd - trumpworld/trumpworld)
+You can access the TrumpWorld Graph live at https://neo4j.com/sandbox
 
 You can also run the TrumpWorld Guide in any Neo4j Browser by executing `:play http://guides.neo4j.com/trumpworld`
 
