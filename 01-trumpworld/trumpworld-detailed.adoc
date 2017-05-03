@@ -1,11 +1,16 @@
 = The TrumpWorld Graph
+////
+Entity A Type,Entity A,Entity B Type,Entity B,Connection,Source(s)
+Organization,4 SHADOW TREE LANE MEMBER CORP.,Organization,4 SHADOW TREE LANE LLC,Ownership,https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html
+////
+:gh_url: 'https://raw.githubusercontent.com/BuzzFeedNews/trumpworld/master/data/trumpworld.csv'
+:url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=1996904412'
+:gdoc: https://docs.google.com/spreadsheets/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/edit
 :neo4j-version: 3.1
-:org_org_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=634968401'
-:person_org_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=1368567920'
-:person_person_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=905294723'
 :author: Michael Hunger
 :twitter: @mesirii
 :tags: politics,journalism,business-relationships
+:img: https://raw.githubusercontent.com/neo4j-contrib/trumpworld-graph/master/img
 // :toc: macro
 
 == Importing the Buzzfeed TrumpWorld Dataset into Neo4j
@@ -66,9 +71,9 @@ Let's have a look at the data first, here as a sample:
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-RETURN row.`Organization A`,row.`Organization B`,row.Connection, row.`Source(s)`
+RETURN row.`Entity A`,row.`Entity A Type`, row.`Entity B`,row.`Entity B Type`,row.Connection, row.`Source(s)`
 LIMIT 5
 ----
 
@@ -76,19 +81,19 @@ LIMIT 5
 
 ifndef::env-graphgist[]
 ----
-╒════════════════════════════════════╤═══════════════════════════════╤════════════════╤══════════════════════════════════════════════════════════════════════════════════════╕
-│"row.`Organization A`"              │"row.`Organization B`"         │"row.Connection"│"row.`Source(s)`"                                                                     │
-╞════════════════════════════════════╪═══════════════════════════════╪════════════════╪══════════════════════════════════════════════════════════════════════════════════════╡
-│"4 SHADOW TREE LANE MEMBER CORP."   │"4 SHADOW TREE LANE LLC"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL DEVELOPMENT ASSOCIATES LLC"│"40 WALL STREET LLC"           │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL STREET LLC"                │"40 WALL STREET COMMERCIAL LLC"│"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL STREET MEMBER CORP."       │"40 WALL STREET LLC"           │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"401 MEZZ VENTURE LLC"              │"401 NORTH WABASH VENTURE LLC" │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-└────────────────────────────────────┴───────────────────────────────┴────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
+╒════════════════════════════════════╤═════════════════════╤═══════════════════════════════╤═════════════════════╤════════════════╤══════════════════════════════════════════════════════════════════════════════════════╕
+│"row.`Entity A`"                    │"row.`Entity A Type`"│"row.`Entity B`"               │"row.`Entity B Type`"│"row.Connection"│"row.`Source(s)`"                                                                     │
+╞════════════════════════════════════╪═════════════════════╪═══════════════════════════════╪═════════════════════╪════════════════╪══════════════════════════════════════════════════════════════════════════════════════╡
+│"4 SHADOW TREE LANE MEMBER CORP."   │"Organization"       │"4 SHADOW TREE LANE LLC"       │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL DEVELOPMENT ASSOCIATES LLC"│"Organization"       │"40 WALL STREET LLC"           │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL STREET LLC"                │"Organization"       │"40 WALL STREET COMMERCIAL LLC"│"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL STREET MEMBER CORP."       │"Organization"       │"40 WALL STREET LLC"           │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"401 MEZZ VENTURE LLC"              │"Organization"       │"401 NORTH WABASH VENTURE LLC" │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+└────────────────────────────────────┴─────────────────────┴───────────────────────────────┴─────────────────────┴────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
 ----
 endif::env-graphgist[]
 
@@ -97,10 +102,11 @@ The most frequently mentioned organizations found by this query:
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
-load csv from url AS row
-with row
-UNWIND  row[0..1] AS org
+{url} AS url
+LOAD CSV WITH HEADERS FROM url AS row
+WITH row
+WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
+UNWIND  [row.`Entity A`, row.`Entity B`] AS org
 RETURN org, count(*)
 ORDER BY count(*) DESC LIMIT 10
 ----
@@ -111,29 +117,30 @@ We see the usual suspect on top.
 
 ifndef::env-graphgist[]
 ----
-╒═══════════════════════════════════════════╤══════════╕
-│"org"                                      │"count(*)"│
-╞═══════════════════════════════════════════╪══════════╡
-│"THRIVE CAPITAL"                           │79        │
-├───────────────────────────────────────────┼──────────┤
-│"DJT HOLDINGS LLC"                         │32        │
-├───────────────────────────────────────────┼──────────┤
-│"TRUMP ORGANIZATION LLC"                   │14        │
-├───────────────────────────────────────────┼──────────┤
-│"KUSHNER COMPANIES"                        │13        │
-├───────────────────────────────────────────┼──────────┤
-│"TTTT VENTURE LLC"                         │7         │
-├───────────────────────────────────────────┼──────────┤
-│"MNC GROUP"                                │5         │
-├───────────────────────────────────────────┼──────────┤
-│"DEUTSCHE BANK"                            │5         │
-├───────────────────────────────────────────┼──────────┤
-│"GOLDMAN SACHS"                            │4         │
-├───────────────────────────────────────────┼──────────┤
-│"TRUMP INTERNATIONAL HOTELS MANAGEMENT LLC"│3         │
-├───────────────────────────────────────────┼──────────┤
-│"THE DONALD J. TRUMP REVOCABLE TRUST"      │3         │
-└───────────────────────────────────────────┴──────────┘
+╒══════════════════════════════╤══════════╕
+│"org"                         │"count(*)"│
+╞══════════════════════════════╪══════════╡
+│"THRIVE CAPITAL"              │"84"      │
+├──────────────────────────────┼──────────┤
+│"MERCER FAMILY FOUNDATION"    │"41"      │
+├──────────────────────────────┼──────────┤
+│"40 WALL STREET LLC"          │"40"      │
+├──────────────────────────────┼──────────┤
+│"DJT HOLDINGS LLC"            │"35"      │
+├──────────────────────────────┼──────────┤
+│"KUSHNER COMPANIES"           │"30"      │
+├──────────────────────────────┼──────────┤
+│"TRUMP HOTELS & CASINO RESORTS│"28"      │
+│, INC."                       │          │
+├──────────────────────────────┼──────────┤
+│"TRUMP TOWER COMMERCIAL LLC"  │"21"      │
+├──────────────────────────────┼──────────┤
+│"TRUMP ORGANIZATION LLC"      │"18"      │
+├──────────────────────────────┼──────────┤
+│"THE TRUMP ORGANIZATION, INC."│"13"      │
+├──────────────────────────────┼──────────┤
+│"TTTT VENTURE LLC"            │"8"       │
+└──────────────────────────────┴──────────┘
 ----
 endif::env-graphgist[]
 
@@ -143,7 +150,7 @@ What kind of relationships exist in the data:
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
 RETURN row.Connection AS type, count(*)
 ORDER BY count(*) DESC
@@ -193,13 +200,14 @@ We want to map those relationship types to fewer, more distinct ones.
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url, 
-['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER','BOUGHT','DEVELOPER','RUSSIAN','TIE','AGREEMENT','MARKETING','SERVICES','DEVELOPER','RECEIVED','MERGER','WORKED_TOGETHER','BACKER','QUESTION','LEASE','BID'] AS terms
+{url} AS url, 
+['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
+WITH terms, row WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*) 
-ORDER BY count(*) DESC;
+RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
+ORDER BY count(*) DESC
 ----
 
 //table
@@ -247,7 +255,14 @@ This looks much better now, so that we can start importing the data.
 
 == Import Organization Relationships
 
-Setting up an constraint on organzation.
+:LIMIT: 
+ifdef::env-graphgist[]
+:LIMIT: WITH * LIMIT 150
+
+NOTE: For demonstration purposes in this GraphGist we only load the first 150 entries for each combination of entities.
+endif:env-graphgist[]
+
+Setting up an constraint on organizations.
 
 //setup
 [source,cypher]
@@ -261,28 +276,29 @@ Most of the work here is clearing up the relationship-type:
 [source,cypher,subs=attributes]
 ----
 WITH
-{org_org_url} AS url, 
-['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER','BOUGHT','DEVELOPER','RUSSIAN','TIE','AGREEMENT','MARKETING','SERVICES','DEVELOPER','RECEIVED','MERGER','WORKED_TOGETHER','BACKER','QUESTION','LEASE','BID'] AS terms
+{url} AS url, 
+['LOAN','LOBBIED','SALE','SUPPLIER','SHAREHOLDER','LICENSES','AFFILIATED','TIES','NEGOTIATION','INVOLVED','PARTNER'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
 
+WITH terms, row WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
+{LIMIT}
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'CONNECTED_TO' end) AS type, row
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), type) AS type, row
 
-MERGE (o1:Organization {name:row.`Organization A`})
-MERGE (o2:Organization {name:row.`Organization B`})
+MERGE (o1:Organization {name:row.`Entity A`})
+MERGE (o2:Organization {name:row.`Entity B`})
 WITH o1,o2,type,row
 CALL apoc.create.relationship(o1,type, {source:row.`Source(s)`, connection:row.Connection},o2) YIELD rel
 RETURN type(rel), count(*) 
 ORDER BY count(*) desc
 ----
 
-This statement creates 770 nodes, 611 relationships with 33 different types.
 
 // Added 770 labels, created 770 nodes, set 770 properties, returned 33 records in 1609 ms.
 
 Which looks like this:
 
-image::https://dl.dropboxusercontent.com/u/14493611/trumpworld.jpg[]
+image::{img}/trumpworld.jpg[]
 
 Now we could enrich the graph by also labeling organizations, e.g. AS "Trump", "Bank".
 
@@ -334,67 +350,47 @@ Which YIELDs this interesting graph:
 //graph_result
 
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/trump-banks.png[]
+image::{img}/trump-banks.png[]
 endif::env-graphgist[]
 
-TODO more labeling, more interesting queries.
+// TODO more labeling, more interesting queries.
 
 == Import Person Organization Relationships
 
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-RETURN row.Organization,row.Person,row.Connection, row.`Source(s)`
+
+WITH row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Organization'
+
+RETURN row.`Entity A` as Person,row.`Entity B` as Organization,row.Connection, row.`Source(s)`
 LIMIT 5
 ----
 
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
+WITH row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Organization'
+
 RETURN row.Connection AS type, count(*)
 ORDER BY count(*) DESC LIMIT 5
 ----
 
-Here we have 212 different relationship-types.
-
-We can even try to compute our terms from the data
-
-
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_org_url} AS url
+{url} AS url,
+['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
-UNWIND split(apoc.text.regreplace(toUpper(row.Connection),'\\W+','_'),"_") AS part
-return part, count(*) 
-ORDER BY count(*) DESC LIMIT 30
-----
+WITH terms, row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Organization'
 
-.Bi-grams
-[source,cypher,subs=attributes]
-----
-WITH 
-{person_org_url} AS url
-LOAD CSV WITH HEADERS FROM url AS row
-WITH split(apoc.text.regreplace(toUpper(row.Connection),'\\W+','_'),"_") as parts
-UNWIND [idx in range(0,length(parts)-2) | parts[idx..idx+2]] AS part
-return part, count(*) 
-ORDER BY count(*) DESC LIMIT 30
-----
-
-[source,cypher,subs=attributes]
-----
-WITH 
-{person_org_url} AS url,
-['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER','SERVICES','CONSULTANT','SECRETARY','CO_RUN','DEGREE','EDITOR','ANALYST','DEAL','LIASON','OFFICER','MARKETING','DONOR','LEGAL','MEMBER','WORKED_FOR','DELEGATE','BACKER','DONATE','COMMANDER','STUDENT','BOUGHT','LED'] AS terms
-LOAD CSV WITH HEADERS FROM url AS row
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*)
+RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
 ORDER BY count(*) DESC
 ----
 
@@ -446,22 +442,47 @@ CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE;
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_org_url} AS url, 
+{url} AS url, 
 ['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
 
-WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'INVOLVED_WITH' end) AS type, row
+WITH terms, row
+WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Organization'
+{LIMIT}
 
-MERGE (o:Organization {name:row.Organization})
-MERGE (p:Person {name:row.Person})
+WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), 'INVOLVED_WITH') AS type, row
+
+MERGE (p:Person {name:row.`Entity A`})
+MERGE (o:Organization {name:row.`Entity B`})
 WITH o,p,type,row
 CALL apoc.create.relationship(p,type, {source:row.`Source(s)`, connection:row.Connection},o) YIELD rel
 RETURN type(rel), count(*) 
 ORDER BY count(*) desc
 ----
 
-This created 700 new nodes, and 1139 relationships.
+
+//setup
+[source,cypher,subs=attributes]
+----
+WITH 
+{url} AS url, 
+['BOARD','DIRECTOR','INCOME','PRESIDENT','CHAIR','CEO','PARTNER','OWNER','INVESTOR','FOUNDER','STAFF','DEVELOPER','EXECUTIVE_COMITTEE','EXECUTIVE','FELLOW','BANKER','COUNSEL','ADVISOR','SHAREHOLDER','LIASON','SPEECH','CONNECTED','HIRED','CONSULTED','INVOLVED','APPOINTEE','MANAGER','TRUSTEE','AMBASSADOR','PUBLISHER','LAWYER'] AS terms
+LOAD CSV WITH HEADERS FROM url AS row
+
+WITH terms, row
+WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Person'
+{LIMIT}
+WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), 'INVOLVED_WITH') AS type, row
+
+MERGE (o:Organization {name:row.`Entity A`})
+MERGE (p:Person {name:row.`Entity B`})
+WITH o,p,type,row
+CALL apoc.create.relationship(p,type, {source:row.`Source(s)`, connection:row.Connection},o) YIELD rel
+RETURN type(rel), count(*) 
+ORDER BY count(*) desc
+----
 
 == Import Person-Person Relationships
 
@@ -469,9 +490,12 @@ This created 700 new nodes, and 1139 relationships.
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_person_url} AS url, 
+{url} AS url, 
 ['WHITE_HOUSE','REPRESENTATIVE','FRIEND','DIRECTOR','ADVISOR','WORKED','MET','LUNCHED','NOMINEE','COUNSELOR','AIDED','CAMPAIGN','PARTNER','MARRIED','CLOSE','APPEARANCE','BOUGHT','SAT_IN','CONSULTED','CO_CHAIR','GAVE'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
+WITH terms, row
+WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Person'
+
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
 RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
@@ -530,28 +554,29 @@ endif::env-graphgist[]
 [source,cypher,subs=attributes]
 ----
 WITH 
-{person_person_url} AS url, 
+{url} AS url, 
 ['WHITE_HOUSE','REPRESENTATIVE','FRIEND','DIRECTOR','ADVISOR','WORKED','MET','LUNCHED','NOMINEE','COUNSELOR','AIDED','CAMPAIGN','PARTNER','MARRIED','CLOSE','APPEARANCE','BOUGHT','SAT_IN','CONSULTED','CO_CHAIR','GAVE'] AS terms
 LOAD CSV WITH HEADERS FROM url AS row
+WITH terms, row
+WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Person'
+{LIMIT}
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
-WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), case when size(split(type,"_")) <= 2 then type else 'RELATED_TO' end) AS type, row
+WITH coalesce(head(filter(term IN terms WHERE type CONTAINS term)), type) AS type, row
 
-MERGE (p1:Person {name:row.`Person A`})
-MERGE (p2:Person {name:row.`Person B`})
+MERGE (p1:Person {name:row.`Entity A`})
+MERGE (p2:Person {name:row.`Entity B`})
 WITH p1,p2,type,row
 CALL apoc.create.relationship(p2,type, {source:row.`Source(s)`, connection:row.Connection},p1) YIELD rel
 RETURN type(rel), count(*) 
 ORDER BY count(*) desc
 ----
 
-This created 44 new nodes, and 107 relationships.
-
-Now we have all data of the https://docs.google.com/spreadsheets/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/edit#gid=1368567920[Buzzfeed spreadsheet] imported and can start asking some interesting questions.
+Now we have all data of the link:{gdoc}[Buzzfeed spreadsheet] imported and can start asking some interesting questions.
 
 This is what TrumpWorld looks like.
 
-image::https://dl.dropboxusercontent.com/u/14493611/trumpworld-full-annotated.jpg[]
+image::{img}/trumpworld-full-annotated.jpg[]
 
 We can now look for instance at the 2nd degree network of "Jared Kushner":
 
@@ -564,7 +589,7 @@ RETURN network
 //graph_result
 
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/jared_kushner_network.jpg[]
+image::{img}/jared_kushner_network.jpg[]
 endif::env-graphgist[]
 
 

@@ -1,11 +1,16 @@
 = The TrumpWorld Graph
-:org_org_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=634968401'
-:person_org_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=1368567920'
-:person_person_url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=905294723'
+////
+Entity A Type,Entity A,Entity B Type,Entity B,Connection,Source(s)
+Organization,4 SHADOW TREE LANE MEMBER CORP.,Organization,4 SHADOW TREE LANE LLC,Ownership,https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html
+////
+:gh_url: 'https://raw.githubusercontent.com/BuzzFeedNews/trumpworld/master/data/trumpworld.csv'
+:url: 'https://docs.google.com/spreadsheets/u/1/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/export?format=csv&gid=1996904412'
+:gdoc: https://docs.google.com/spreadsheets/d/1Z5Vo5pbvxKJ5XpfALZXvCzW26Cl4we3OaN73K9Ae5Ss/edit
 :neo4j-version: 3.1
 :author: Michael Hunger
 :twitter: @mesirii
 :tags: politics,journalism,business-relationships
+:img: https://raw.githubusercontent.com/neo4j-contrib/trumpworld-graph/master/img
 // :toc: macro
 
 == Importing the Buzzfeed TrumpWorld Dataset into Neo4j
@@ -19,7 +24,6 @@ I came across this tweet by Sanchez Castro (@SCHZCAS) which I'm more than happy 
 
 As part of the Buzzfeed article https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld?utm_term=.kd5QM0z1q#.ekLzoZ316[Help Us Map TrumpWorld], the four investigative journalists, John Templon, Alex Campbell, Anthony Cormier, and Jeremy Singer-Vine asked the public to help them map and analyze the data that they investigated, confirmed and published:
 
-
 ____
 Now we are asking the public to use our data to find connections we may have missed, and to give us context we don’t currently understand. 
 We hope you will help us — and the public — learn more about TrumpWorld and how this unprecedented array of businesses might affect public policy.
@@ -29,12 +33,13 @@ image::https://img.buzzfeed.com/buzzfeed-static/static/2017-01/13/13/asset/buzzf
 
 // toc::[]
 
-ifndef::env-guide[]
 == Setup with Local Database
 
-If you want to work with this data locally, please http://neo4j.com/download[*download and install*] Neo4j 3.1.
+If you want to work with this data locally, please http://neo4j.com/download[*download and install*] Neo4j 3.1 or use a http://neo4j.com/sandbox[blank Neo4j Sandbox] (of course you can also explore the already imported Trumpworld sandbox).
 
-When using Neo4j Desktop, you can find configuration and directories on the `Options` pane which you open with the button of the same name. 
+ifdef::env-graphgist[]
+// When using Neo4j Desktop, you can find configuration and directories on the `Options` pane which you open with the button of the same name. 
+
 
 If you want to *run this guide inside of your Neo4j-Browser*, you can edit the database configuration from the Options pane and add the following setting:
 
@@ -47,23 +52,23 @@ Then restart the database and you're ready to roll, by running this command:
 ----
 :play http://portal.graphgist.org/graph_gists/trumpworld-graph/graph_guide
 ----
-
-endif::env-guide[]
+endif::env-graphgist[]
 
 == Looking at the Data
 
-The https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld[Buzzfeed article] linked int he tweet points to a Google Spreadsheet with collected and verified/researched data of relationships of Trump organizations to other organizations, in total we have 770 organizations (as of today) with 611 relationships.
+The https://www.buzzfeed.com/johntemplon/help-us-map-trumpworld[Buzzfeed article] linked int he tweet points to a link:{gdoc}[Google Spreadsheet] with collected and verified/researched data of relationships of Trump organizations to other organizations, in total we have 770 organizations (as of today) with 611 relationships.
+The same data is available as a CSV and GraphML file in their https://github.com/BuzzFeedNews/trumpworld[GitHub Repository].
 
-The data is fortunately available as a public google doc, so we can use our old trick of loading the CSV-Download URL with `LOAD CSV` into Neo4j.
+The data is fortunately available as a *public* google doc, so we can use our old trick of loading the CSV-Download URL with `LOAD CSV` into Neo4j.
 
 Let's have a look at the data first, here as a sample:
 
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-RETURN row.`Organization A`,row.`Organization B`,row.Connection, row.`Source(s)`
+RETURN row.`Entity A`,row.`Entity A Type`, row.`Entity B`,row.`Entity B Type`,row.Connection, row.`Source(s)`
 LIMIT 5
 ----
 
@@ -71,19 +76,19 @@ LIMIT 5
 
 ifndef::env-graphgist[]
 ----
-╒════════════════════════════════════╤═══════════════════════════════╤════════════════╤══════════════════════════════════════════════════════════════════════════════════════╕
-│"row.`Organization A`"              │"row.`Organization B`"         │"row.Connection"│"row.`Source(s)`"                                                                     │
-╞════════════════════════════════════╪═══════════════════════════════╪════════════════╪══════════════════════════════════════════════════════════════════════════════════════╡
-│"4 SHADOW TREE LANE MEMBER CORP."   │"4 SHADOW TREE LANE LLC"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL DEVELOPMENT ASSOCIATES LLC"│"40 WALL STREET LLC"           │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL STREET LLC"                │"40 WALL STREET COMMERCIAL LLC"│"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"40 WALL STREET MEMBER CORP."       │"40 WALL STREET LLC"           │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-├────────────────────────────────────┼───────────────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-│"401 MEZZ VENTURE LLC"              │"401 NORTH WABASH VENTURE LLC" │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
-└────────────────────────────────────┴───────────────────────────────┴────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
+╒════════════════════════════════════╤═════════════════════╤═══════════════════════════════╤═════════════════════╤════════════════╤══════════════════════════════════════════════════════════════════════════════════════╕
+│"row.`Entity A`"                    │"row.`Entity A Type`"│"row.`Entity B`"               │"row.`Entity B Type`"│"row.Connection"│"row.`Source(s)`"                                                                     │
+╞════════════════════════════════════╪═════════════════════╪═══════════════════════════════╪═════════════════════╪════════════════╪══════════════════════════════════════════════════════════════════════════════════════╡
+│"4 SHADOW TREE LANE MEMBER CORP."   │"Organization"       │"4 SHADOW TREE LANE LLC"       │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL DEVELOPMENT ASSOCIATES LLC"│"Organization"       │"40 WALL STREET LLC"           │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL STREET LLC"                │"Organization"       │"40 WALL STREET COMMERCIAL LLC"│"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"40 WALL STREET MEMBER CORP."       │"Organization"       │"40 WALL STREET LLC"           │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+├────────────────────────────────────┼─────────────────────┼───────────────────────────────┼─────────────────────┼────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+│"401 MEZZ VENTURE LLC"              │"Organization"       │"401 NORTH WABASH VENTURE LLC" │"Organization"       │"Ownership"     │"https://www.documentcloud.org/documents/2838696-Trump-2016-Financial-Disclosure.html"│
+└────────────────────────────────────┴─────────────────────┴───────────────────────────────┴─────────────────────┴────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
 ----
 endif::env-graphgist[]
 
@@ -92,10 +97,11 @@ The most frequently mentioned organizations found by this query:
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
-LOAD CSV FROM url AS row
+{url} AS url
+LOAD CSV WITH HEADERS FROM url AS row
 WITH row
-UNWIND  row[0..1] AS org
+WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
+UNWIND  [row.`Entity A`, row.`Entity B`] AS org
 RETURN org, count(*)
 ORDER BY count(*) DESC LIMIT 10
 ----
@@ -106,29 +112,30 @@ We see the usual suspect on top.
 
 ifndef::env-graphgist[]
 ----
-╒═══════════════════════════════════════════╤══════════╕
-│"org"                                      │"count(*)"│
-╞═══════════════════════════════════════════╪══════════╡
-│"THRIVE CAPITAL"                           │79        │
-├───────────────────────────────────────────┼──────────┤
-│"DJT HOLDINGS LLC"                         │32        │
-├───────────────────────────────────────────┼──────────┤
-│"TRUMP ORGANIZATION LLC"                   │14        │
-├───────────────────────────────────────────┼──────────┤
-│"KUSHNER COMPANIES"                        │13        │
-├───────────────────────────────────────────┼──────────┤
-│"TTTT VENTURE LLC"                         │7         │
-├───────────────────────────────────────────┼──────────┤
-│"MNC GROUP"                                │5         │
-├───────────────────────────────────────────┼──────────┤
-│"DEUTSCHE BANK"                            │5         │
-├───────────────────────────────────────────┼──────────┤
-│"GOLDMAN SACHS"                            │4         │
-├───────────────────────────────────────────┼──────────┤
-│"TRUMP INTERNATIONAL HOTELS MANAGEMENT LLC"│3         │
-├───────────────────────────────────────────┼──────────┤
-│"THE DONALD J. TRUMP REVOCABLE TRUST"      │3         │
-└───────────────────────────────────────────┴──────────┘
+╒══════════════════════════════╤══════════╕
+│"org"                         │"count(*)"│
+╞══════════════════════════════╪══════════╡
+│"THRIVE CAPITAL"              │"84"      │
+├──────────────────────────────┼──────────┤
+│"MERCER FAMILY FOUNDATION"    │"41"      │
+├──────────────────────────────┼──────────┤
+│"40 WALL STREET LLC"          │"40"      │
+├──────────────────────────────┼──────────┤
+│"DJT HOLDINGS LLC"            │"35"      │
+├──────────────────────────────┼──────────┤
+│"KUSHNER COMPANIES"           │"30"      │
+├──────────────────────────────┼──────────┤
+│"TRUMP HOTELS & CASINO RESORTS│"28"      │
+│, INC."                       │          │
+├──────────────────────────────┼──────────┤
+│"TRUMP TOWER COMMERCIAL LLC"  │"21"      │
+├──────────────────────────────┼──────────┤
+│"TRUMP ORGANIZATION LLC"      │"18"      │
+├──────────────────────────────┼──────────┤
+│"THE TRUMP ORGANIZATION, INC."│"13"      │
+├──────────────────────────────┼──────────┤
+│"TTTT VENTURE LLC"            │"8"       │
+└──────────────────────────────┴──────────┘
 ----
 endif::env-graphgist[]
 
@@ -138,7 +145,7 @@ What kind of relationships exist in the data:
 [source,cypher,subs=attributes]
 ----
 WITH 
-{org_org_url} AS url
+{url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
 RETURN row.Connection AS type, count(*)
 ORDER BY count(*) DESC
@@ -147,35 +154,40 @@ ORDER BY count(*) DESC
 
 ifndef::env-graphgist[]
 ----
-╒════════════════════════════════════════════════════════════════════════════════════════════════════╤══════════╕
-│"type"                                                                                              │"count(*)"│
-╞════════════════════════════════════════════════════════════════════════════════════════════════════╪══════════╡
-│"Ownership"                                                                                         │309       │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"Investor"                                                                                          │90        │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"Owns collateralized debt"                                                                          │54        │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"Subsidiary"                                                                                        │41        │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"NKA/FKA"                                                                                           │28        │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"DBA"                                                                                               │16        │
-....
-│"Anbang would become one of the equity partners in the [666 Fifth Avenue] redevelopment if an agreem│1         │
-│ent is finalized, per New York Times"                                                               │          │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"an investment firm involved in Trump Organization projects abroad, per New York Times"             │1         │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"Kushner-affiliated corporate entity, per New York Magazine"                                        │1         │
-│"Lobbied for"                                                                                       │1         │
-├────────────────────────────────────────────────────────────────────────────────────────────────────┼──────────┤
-│"Partners on Trump Hotel Rio de Janeiro"                                                            │1         │
-└────────────────────────────────────────────────────────────────────────────────────────────────────┴──────────┘
+╒═══════════════════════════════════════════════════════...═╤══════════╕
+│"type"                                                 ... │"count(*)"│
+╞═══════════════════════════════════════════════════════...═╪══════════╡
+│"President (as of 2016 FEC filing)"                    ... │"475"     │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Ownership"                                            ... │"323"     │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Director"                                             ... │"126"     │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Investor"                                             ... │"120"     │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Reported member"                                      ... │"103"     │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Former director"                                      ... │"66"      │
+....                                                    ...
+│"\"Kushner and Cui have had an extensive ongoing dialog...i│"1"       │
+│te House official,\" per Bloomberg"                    ... │          │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Marino served as Barry's law clerk"                   ... │"1"       │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Former director of African American outreach"         ... │"1"       │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Former director of advance"                           ... │"1"       │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Executive vice president and special counsel to Donald... │"1"       │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Ziya \"awarded a series of multimillion-dollar contrac... │"1"       │
+├───────────────────────────────────────────────────────...─┼──────────┤
+│"Former deputy director member relations"              ... │"1"       │
+└───────────────────────────────────────────────────────...─┴──────────┘
 ----
 endif::env-graphgist[]
 
-While some of them like `Ownership`, or `Investor` are straightforward others (`Anbang would become one of the equity partners in the [666 Fifth Avenue] redevelopment if an agreement is finalized, per New York Times`) are very specific, and probably not a good choice for relationship-type to query on.
+While some of them like `Ownership`, or `Investor` are straightforward others (`Ziya \"awarded a series of multimillion-dollar contracts to Azarpassillo,\" per The New Yorker`) are very specific, and probably not a good choice for relationship-type to query on.
 
 So we have *two options*, one could be to use a *generic* relationship and put all the `Connection` information into a property, or *alternatively* we do some cleanup/unification and have a *richer set* of relationships.
 
@@ -183,6 +195,13 @@ So we have *two options*, one could be to use a *generic* relationship and put a
 
 We look at the simpler variant here, to quickly get results.
 THe unification approach is http://portal.graphgist.org/graph_gists/834c8437-f713-420d-8c0b-979a2d067485[demonstrated here], for those of you that want to have a bit more interesting graph model.
+
+:LIMIT: 
+ifdef::env-graphgist[]
+:LIMIT: WITH * LIMIT 150
+
+NOTE: For demonstration purposes in this GraphGist we only load the first 150 entries for each combination of entities.
+endif:env-graphgist[]
 
 After creating the two needed constraints, we can directly import the data with Neo4j's `LOAD CSV` command.
 
@@ -198,28 +217,46 @@ CREATE CONSTRAINT ON (o:Organization) ASSERT o.name IS UNIQUE;
 CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE;
 ----
 
-Connect organizations with other organizations from the 1st tab.
+Let's connect the organizations first:
 
 //setup
 [source,cypher,subs=attributes]
 ----
-WITH {org_org_url} AS url
+WITH {url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-MERGE (o1:Organization {name:row.`Organization A`})
-MERGE (o2:Organization {name:row.`Organization B`})
+WITH row WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
+{LIMIT}
+MERGE (o1:Organization {name:row.`Entity A`})
+MERGE (o2:Organization {name:row.`Entity B`})
 CREATE (o1)-[con:CONNECTED_TO]->(o2)
 SET con.connection=row.Connection, con.source=row.`Source(s)`
 ----
 
-Connect people with organizations from the 2nd tab.
+
+Connect people with organizations in both directions:
 
 //setup
 [source,cypher,subs=attributes]
 ----
-WITH {person_org_url} AS url
+WITH {url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-MERGE (p:Person {name:row.Person})
-MERGE (o:Organization {name:row.Organization})
+WITH row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Organization'
+{LIMIT}
+MERGE (p:Person {name:row.`Entity A`})
+MERGE (o:Organization {name:row.`Entity B`})
+CREATE (p)-[con:INVOLVED_WITH]->(o)
+SET con.connection=row.Connection, con.source=row.`Source(s)`
+----
+
+//setup
+[source,cypher,subs=attributes]
+----
+WITH {url} AS url
+LOAD CSV WITH HEADERS FROM url AS row
+WITH row WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Person'
+{LIMIT}
+MERGE (o:Organization {name:row.`Entity A`})
+MERGE (p:Person {name:row.`Entity B`})
 CREATE (p)-[con:INVOLVED_WITH]->(o)
 SET con.connection=row.Connection, con.source=row.`Source(s)`
 ----
@@ -229,10 +266,12 @@ Connect people with other people from the 3rd tab.
 //setup
 [source,cypher,subs=attributes]
 ----
-WITH {person_person_url} AS url
+WITH {url} AS url
 LOAD CSV WITH HEADERS FROM url AS row
-MERGE (p1:Person {name:row.`Person A`})
-MERGE (p2:Person {name:row.`Person B`})
+WITH row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Person'
+{LIMIT}
+MERGE (p1:Person {name:row.`Entity A`})
+MERGE (p2:Person {name:row.`Entity B`})
 CREATE (p2)-[con:RELATED_TO]->(p1)
 SET con.connection=row.Connection, con.source=row.`Source(s)`
 ----
@@ -241,7 +280,7 @@ Now we have all data of the https://docs.google.com/spreadsheets/d/1Z5Vo5pbvxKJ5
 
 This is what TrumpWorld looks like.
 
-image::https://dl.dropboxusercontent.com/u/14493611/trumpworld-simple.jpg[]
+image::{img}/trumpworld-simple.jpg[]
 
 == Data Enrichment
 
@@ -295,7 +334,7 @@ Which YIELDs this interesting graph:
 //graph_result
 
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/trumpworld-simple-banks.jpg[]
+image::{img}/trumpworld-simple-banks.jpg[]
 endif::env-graphgist[]
 
 == Connections between Organizations
@@ -313,7 +352,7 @@ RETURN path
 //graph_result
 
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/trump-organizations.jpg[]
+image::{img}/trump-organizations.jpg[]
 endif::env-graphgist[]
 
 == Kushner Network
@@ -329,7 +368,7 @@ RETURN network
 //graph_result
 
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/trumpworld-simple-kushner.jpg[]
+image::{img}/trumpworld-simple-kushner.jpg[]
 endif::env-graphgist[]
 
 == Most Connected People
@@ -374,7 +413,7 @@ endif::env-graphgist[]
 
 == Connection from Putin to Trump
 
-As expected via Rex Tillerson, but interestingly the connection between Tillerson and Trump as Nominee for Secretary of State seems to be missing from the data.
+As expected via Rex Tillerson, and Sergei Millian.
 
 [source,cypher]
 ----
@@ -385,15 +424,25 @@ RETURN path
 
 //graph_result
 
+There are also longer connections via other people, if we exclude these two.
+
+[source,cypher]
+----
+MATCH (vp:Person {name:"VLADIMIR PUTIN"}),(dt:Person {name:"DONALD J. TRUMP"})
+MATCH path = allShortestPaths( (vp)-[*]-(dt) ) WHERE none(n in nodes(path) WHERE n.name IN ['REX TILLERSON','SERGEI MILLIAN'])
+RETURN path
+----
+
+//graph_result
+
+
 ifndef::env-graphgist[]
-image::https://dl.dropboxusercontent.com/u/14493611/trump-putin.jpg[]
+image::{img}/trump-putin.jpg[]
 endif::env-graphgist[]
 
 So let's check the data.
 
 == Nominees of Trumps Cabinet
-
-And really Tillerson is missing, there are only 19 in the list.
 
 [source,cypher]
 ----
@@ -407,47 +456,59 @@ ORDER BY p.name ASC
 
 ifndef::env-graphgist[]
 ----
-╒═══════════════════╤══════════════════════════════════════════════════════════════════════════╕
-│"p.name"           │"con.connection"                                                          │
-╞═══════════════════╪══════════════════════════════════════════════════════════════════════════╡
-│"ANDY PUZDER"      │"Nominee for Secretary of Labor"                                          │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"BEN CARSON"       │"Nominee for Secretary of HUD"                                            │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"BETSY DEVOS"      │"Nominee for Secretary of Education"                                      │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"DAN COATS"        │"Nominee for Director of National Intelligence"                           │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"ELAINE CHAO"      │"Nominee for Secretary of Transportation"                                 │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"JAMES MATTIS"     │"Nominee for Secretary of Defense"                                        │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"JEFF SESSIONS"    │"Nominee for Attorney General"                                            │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"JOHN F. KELLY"    │"Nominee for Secretary of Department of Homeland Security"                │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"LINDA MCMAHON"    │"Nominee for Administrator of the Small Business Administration"          │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"MICHAEL POMPEO"   │"Nominee for Director of CIA"                                             │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"MICK MULVANEY"    │"Nominee for Director of Office of Management and Budget"                 │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"NIKKI HALEY"      │"Nominee for Ambassador to the United Nations"                            │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"RICK PERRY"       │"Nominee for Secretary of Energy"                                         │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"ROBERT LIGHTHIZER"│"Nominee for U.S. Trade Representative"                                   │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"RYAN ZINKE"       │"Nominee for Secretary of Interior"                                       │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"SCOTT PRUITT"     │"Nominee for Administrator of the Environmental Protection Administration"│
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"STEVEN MNUCHIN"   │"Nominee for Secretary of Treasury"                                       │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"TOM PRICE"        │"Nominee for Secretary of Health and Human Services"                      │
-├───────────────────┼──────────────────────────────────────────────────────────────────────────┤
-│"WILBUR ROSS"      │"Nominee for Secretary of Commerce"                                       │
-└───────────────────┴──────────────────────────────────────────────────────────────────────────┘
+╒═══════════════════════════════╤═══════════════════════════════════════════════════════...╕
+│"p.name"                       │"con.connection"                                       ...│
+╞═══════════════════════════════╪═══════════════════════════════════════════════════════...╡
+│"ALEXANDER ACOSTA"             │"Nominee for Labor Secretary"                          ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"ANDY PUZDER"                  │"Nominee for Secretary of Labor"                       ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"BEN CARSON"                   │"Nominee for Secretary of HUD"                         ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"BETSY DEVOS"                  │"Nominee for Secretary of Education"                   ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"DAN COATS"                    │"Nominee for Director of National Intelligence"        ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"DAVID SHULKIN"                │"Nominee for Secretary of Veterans Affairs"            ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"ELAINE CHAO"                  │"Nominee for Secretary of Transportation"              ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"JAMES MATTIS"                 │"Nominee for Secretary of Defense"                     ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"JEFF SESSIONS"                │"Nominee for Attorney General"                         ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"JOHN F. KELLY"                │"Nominee for Secretary of Department of Homeland Securi...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"LINDA MCMAHON"                │"Nominee for Administrator of the Small Business Admini...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"MICHAEL POMPEO"               │"Nominee for Director of CIA"                          ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"MICK MULVANEY"                │"Nominee for Director of Office of Management and Budge...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"NIKKI HALEY"                  │"Nominee for Ambassador to the United Nations"         ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"REX TILLERSON"                │"Nominee for Secretary of State"                       ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"RICK PERRY"                   │"Nominee for Secretary of Energy"                      ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"ROBERT LIGHTHIZER"            │"Nominee for U.S. Trade Representative"                ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"RYAN ZINKE"                   │"Nominee for Secretary of Interior"                    ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"SCOTT PRUITT"                 │"Nominee for Administrator of the Environmental Protect...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"SONNY PERDUE"                 │"Nominee for Secretary of Agriculture"                 ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"STEVEN MNUCHIN"               │"Nominee for Secretary of Treasury"                    ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"TERRY BRANSTAD"               │"Nominee for Ambassador to China"                      ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"TOM PRICE"                    │"Nominee for Secretary of Health and Human Services"   ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"WALTER J. \"JAY\" CLAYTON III"│"Nominee for SEC Chairman"                             ...│
+├───────────────────────────────┼───────────────────────────────────────────────────────...┤
+│"WILBUR ROSS"                  │"Nominee for Secretary of Commerce"                    ...│
+└───────────────────────────────┴───────────────────────────────────────────────────────...┘
 ----
 endif::env-graphgist[]
 
