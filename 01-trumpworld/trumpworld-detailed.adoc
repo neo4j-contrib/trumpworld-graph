@@ -206,7 +206,7 @@ LOAD CSV WITH HEADERS FROM url AS row
 WITH terms, row WHERE row.`Entity A Type` = 'Organization' AND row.`Entity B Type` = 'Organization'
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
+RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection)[0..5] AS connections
 ORDER BY count(*) DESC
 ----
 
@@ -390,7 +390,7 @@ WITH terms, row WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = '
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
+RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection)[0..5] AS connections
 ORDER BY count(*) DESC
 ----
 
@@ -498,7 +498,7 @@ WHERE row.`Entity A Type` = 'Person' AND row.`Entity B Type` = 'Person'
 
 WITH apoc.text.regreplace(toUpper(row.Connection),'\\W+','_') AS type, row, terms
 WITH head(filter(term IN terms WHERE type CONTAINS term)) AS found, type, row
-RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection) AS connections
+RETURN coalesce(found,type) AS type, count(*), collect(distinct row.Connection)[0..5] AS connections
 ORDER BY count(*) DESC
 ----
 
@@ -583,6 +583,7 @@ We can now look for instance at the 2nd degree network of "Jared Kushner":
 [source,cypher]
 ----
 MATCH network = (:Person {name:"JARED KUSHNER"})-[*..2]-()
+WHERE NONE(n IN network WHERE n.name = "DONALD J. TRUMP")
 RETURN network
 ----
 
